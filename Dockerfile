@@ -10,26 +10,33 @@ RUN apt-get update && apt-get install -y \
     zip \
     curl
 
-# Extensiones PHP
+# Extensiones PHP necesarias para Laravel
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Habilitar mod_rewrite
 RUN a2enmod rewrite
 
-# Copiar Composer
+# Cambiar DocumentRoot a /public
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/sites-available/*.conf \
+    /etc/apache2/apache2.conf \
+    /etc/apache2/conf-available/*.conf
+
+# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar proyecto
+# Copiar el proyecto
 COPY . .
 
 # Permisos
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Instalar dependencias Laravel
+# Instalar dependencias PHP
 RUN composer install --no-dev --optimize-autoloader
 
-# Puerto
 EXPOSE 80
