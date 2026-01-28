@@ -12,4 +12,7 @@ Route::middleware(['auth'])->group(function () {
     })->name('dashboard');
 });
 
-require __DIR__.'/auth.php';
+if (file_exists(__DIR__.'/auth.php')) {
+    require __DIR__.'/auth.php';
+}
+
