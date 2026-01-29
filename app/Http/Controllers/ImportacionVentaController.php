@@ -13,22 +13,16 @@ class ImportacionVentaController extends Controller
     }
     public function store(Request $request) {
     $path = $request->file('archivo')->getRealPath();
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    
-    // Limpiar el encabezado de cualquier basura (BOM, comas raras)
-    $headers = str_getcsv(array_shift($lines));
-    $headers = array_map(fn($h) => preg_replace('/[^a-z0-9]/i', '_', trim($h)), $headers);
+    $rows = array_map('str_getcsv', file($path));
+    $header = array_shift($rows);
 
-    foreach ($lines as $line) {
-        $values = str_getcsv($line);
-        if (count($values) < 1) continue;
-
-        // Creamos el registro sin mapeos complicados
-        \App\Models\Venta::create([
-            'data' => array_combine($headers, array_pad($values, count($headers), ''))
-        ]);
+    foreach ($rows as $row) {
+        if (count($header) == count($row)) {
+            $json = array_combine($header, $row);
+            \App\Models\Venta::create(['data' => $json]); // Sube todo el CSV directo
+        }
     }
-    return back()->with('success', '¡POR FIN SUBIÓ!');
-}
+    return back()->with('success', '¡Importación finalizada!');
+    }   
 
 }
