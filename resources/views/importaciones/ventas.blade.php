@@ -89,11 +89,13 @@
             </div>
 
             {{-- PREVIEW REAL --}}
-            <div
+         <div
                 id="previewContainer"
-                class="hidden mt-6 rounded-xl overflow-x-auto
-                       border border-slate-200 bg-white shadow"
-            ></div>
+                class="hidden mt-6 rounded-xl
+                    border border-slate-200 bg-white shadow
+                    max-h-[420px] overflow-y-auto"
+            >
+            </div>
 
         </div>
 
@@ -119,7 +121,8 @@ document.getElementById('csvInput').addEventListener('change', function (e) {
 
         let table = `
             <table class="min-w-full text-sm rounded-xl overflow-hidden">
-                <thead class="bg-slate-100 text-slate-700">
+                <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10">
+
                     <tr>
                         ${headers.map(h => `<th class="px-4 py-2 text-left">${h}</th>`).join('')}
                     </tr>
