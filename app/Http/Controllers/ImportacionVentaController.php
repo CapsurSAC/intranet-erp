@@ -18,63 +18,52 @@ class ImportacionVentaController extends Controller
             'archivo' => 'required|file|mimes:csv,txt'
         ]);
 
-        $path = $request->file('archivo')->getRealPath();
-        $file = fopen($path, 'r');
+        $file = fopen($request->file('archivo')->getRealPath(), 'r');
 
-        if (!$file) {
-            return back()->withErrors('No se pudo abrir el archivo');
-        }
+        // Leer encabezados
+        $headers = fgetcsv($file);
 
-        /* ===============================
-         * 1️⃣ Detectar delimitador
-         * =============================== */
-        $firstLine = fgets($file);
-        $delimiter = str_contains($firstLine, ';') ? ';' : ',';
-        rewind($file);
+        // Normalizamos headers
+        $headers = array_map(fn($h) => trim($h), $headers);
 
-        /* ===============================
-         * 2️⃣ Leer cabecera correctamente
-         * =============================== */
-        $header = fgetcsv($file, 0, $delimiter);
+        // MAPEO REAL DEL CSV
+        $map = [
+            'dni'     => 'DNI:',
+            'cliente' => 'CLIENTE:',
+            'email'   => 'EMAIL:',
+            'asesor'  => 'ASESOR(A)',
+            'curso'   => 'PRODUCTO',
+            'celular' => 'CELULAR:',
+            'fecha'   => 'Marca temporal',
+        ];
 
-        if (!$header) {
-            return back()->withErrors('El archivo CSV está vacío');
-        }
-
-        $header = array_map(fn ($h) => strtolower(trim($h)), $header);
-
-        /* ===============================
-         * 3️⃣ Validar columnas obligatorias
-         * =============================== */
-        $required = ['dni', 'cliente', 'email', 'curso'];
-
-        foreach ($required as $col) {
-            if (!in_array($col, $header)) {
-                return back()->withErrors("❌ Falta la columna obligatoria: $col");
+        // Validación de columnas obligatorias
+        foreach ($map as $campo => $csvName) {
+            if (!in_array($csvName, $headers)) {
+                return back()->withErrors("Falta la columna obligatoria: {$csvName}");
             }
         }
 
-        $map = array_flip($header);
+        // Índices reales
+        $indexes = [];
+        foreach ($map as $campo => $csvName) {
+            $indexes[$campo] = array_search($csvName, $headers);
+        }
+
         $inserted = 0;
 
-        /* ===============================
-         * 4️⃣ Procesar filas
-         * =============================== */
-        while (($row = fgetcsv($file, 0, $delimiter)) !== false) {
+        while (($row = fgetcsv($file)) !== false) {
 
-            // ignorar filas vacías
-            if (count(array_filter($row)) === 0) {
-                continue;
-            }
+            // Evitar filas vacías
+            if (empty($row[$indexes['dni']])) continue;
 
             Venta::create([
-                'dni'         => trim($row[$map['dni']] ?? ''),
-                'cliente'     => trim($row[$map['cliente']] ?? ''),
-                'email'       => trim($row[$map['email']] ?? ''),
-                'curso'       => trim($row[$map['curso']] ?? ''),
-                'asesor'      => isset($map['asesor'])
-                                    ? trim($row[$map['asesor']] ?? '')
-                                    : null,
+                'dni'         => trim($row[$indexes['dni']]),
+                'cliente'     => trim($row[$indexes['cliente']]),
+                'email'       => trim($row[$indexes['email']]),
+                'asesor'      => trim($row[$indexes['asesor']]),
+                'curso'       => trim($row[$indexes['curso']]),
+                'celular'     => trim($row[$indexes['celular']] ?? ''),
                 'fecha_venta' => now(),
             ]);
 
