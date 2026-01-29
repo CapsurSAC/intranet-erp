@@ -1,3 +1,27 @@
+@extends('layouts.app')
+
+@section('title', 'Importar ventas')
+@section('header', 'Importar ventas históricas')
+
+@section('content')
+<div class="bg-white rounded-lg shadow p-6 max-w-xl">
+    <p class="text-gray-600 mb-4">
+        Sube archivos CSV con ventas antiguas del sistema.
+    </p>
+
+    <form method="POST" action="/importaciones/ventas/preview" enctype="multipart/form-data">
+        @csrf
+
+        <input type="file" name="csv" accept=".csv" required
+            class="block w-full mb-4 text-sm">
+
+        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Cargar archivo
+        </button>
+    </form>
+</div>
+@endsection
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
