@@ -72,18 +72,38 @@ const stateError = document.getElementById('stateError');
 const previewWrapper = document.getElementById('previewWrapper');
 const previewContainer = document.getElementById('previewContainer');
 
-/* 🔥 MAPEO REAL GOOGLE FORMS → SISTEMA */
+/* 🔥 MAPEO ACTUALIZADO SEGÚN TU EXCEL */
 const COLUMN_MAP = {
-    dni: ['dni', 'documento'],
-    cliente: ['nombres y apellidos', 'cliente'],
-    email: ['correo', 'email', 'dirección de correo electrónico'],
-    curso: ['curso', 'curso adquirido', 'programa'],
+    dni: ['dni:', 'documento', 'dni'],
+    cliente: ['cliente:', 'cliente', 'nombres'],
+    email: ['email:', 'dirección de correo electrónico'],
+    curso: ['nombre del diplomado', 'producto', 'curso'],
     asesor: ['asesor']
 };
 
+// Función robusta para separar CSV respetando comillas
+function splitCSV(line, delimiter) {
+    const result = [];
+    let curVal = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+            result.push(curVal.trim());
+            curVal = "";
+        } else {
+            curVal += char;
+        }
+    }
+    result.push(curVal.trim());
+    return result;
+}
+
 function findColumnIndex(headers, aliases) {
     return headers.findIndex(h =>
-        aliases.some(a => h.includes(a))
+        aliases.some(a => h.toLowerCase().includes(a.toLowerCase()))
     );
 }
 
@@ -102,18 +122,18 @@ input.addEventListener('change', e => {
             const text = ev.target.result;
             const rows = text.split(/\r?\n/).filter(r => r.trim() !== '');
 
-            const delimiter = rows[0].includes(';') ? ';' : ',';
+            if (rows.length === 0) throw new Error("El archivo está vacío");
 
-            const headers = rows[0]
-                .split(delimiter)
-                .map(h => h.toLowerCase().trim());
+            const delimiter = rows[0].includes(';') ? ';' : ',';
+            
+            // Usamos splitCSV para los encabezados también
+            const headers = splitCSV(rows[0], delimiter);
 
             const indexes = {};
-
             for (const key in COLUMN_MAP) {
                 const idx = findColumnIndex(headers, COLUMN_MAP[key]);
                 if (idx === -1 && ['dni','cliente','email','curso'].includes(key)) {
-                    throw new Error(`No se detectó la columna: ${key}`);
+                    throw new Error(`No se detectó la columna necesaria para: ${key.toUpperCase()}. Asegúrate que el CSV tenga los encabezados correctos.`);
                 }
                 indexes[key] = idx;
             }
@@ -123,7 +143,7 @@ input.addEventListener('change', e => {
                     <thead class="bg-slate-100 sticky top-0">
                         <tr>
                             ${Object.keys(indexes).map(k =>
-                                `<th class="px-4 py-2">${k.toUpperCase()}</th>`
+                                `<th class="px-4 py-2 border text-left">${k.toUpperCase()}</th>`
                             ).join('')}
                         </tr>
                     </thead>
@@ -131,11 +151,13 @@ input.addEventListener('change', e => {
             `;
 
             rows.slice(1, 21).forEach(r => {
-                const cols = r.split(delimiter);
+                const cols = splitCSV(r, delimiter);
                 table += `<tr class="border-t">`;
                 for (const k in indexes) {
                     const val = indexes[k] !== -1 ? cols[indexes[k]] : '';
-                    table += `<td class="px-4 py-2">${val ?? ''}</td>`;
+                    // Limpiar comillas extras si quedaron
+                    const cleanVal = (val || '').replace(/^"|"$/g, '');
+                    table += `<td class="px-4 py-2 border">${cleanVal}</td>`;
                 }
                 table += `</tr>`;
             });
