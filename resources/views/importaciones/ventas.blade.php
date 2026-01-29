@@ -6,129 +6,59 @@
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 px-6 py-8">
 
-    {{-- HEADER --}}
     <div class="mb-8">
-        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">
-            Importar ventas históricas
-        </h1>
-        <p class="text-slate-500 mt-2 max-w-2xl">
-            Carga información antigua desde archivos CSV.  
-            Las nuevas ventas se registran directamente desde el sistema.
+        <h1 class="text-3xl font-bold text-slate-800">Importar ventas históricas</h1>
+        <p class="text-slate-500 mt-2">
+            Carga información antigua desde archivos CSV (Google Forms).
         </p>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
-        {{-- CARD IMPORT --}}
-        <div class="xl:col-span-1 bg-white/80 backdrop-blur
-                    rounded-2xl shadow-xl p-6
-                    transition-all duration-300
-                    hover:shadow-2xl hover:-translate-y-1">
-
-            <h2 class="text-lg font-semibold text-slate-700 mb-6 flex items-center gap-2">
-                📁 Archivo CSV
-            </h2>
+        {{-- CARGA --}}
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <h2 class="text-lg font-semibold mb-4">📁 Archivo CSV</h2>
 
             <form method="POST" action="/importaciones/ventas" enctype="multipart/form-data">
                 @csrf
 
-                <label class="block">
-                    <span class="text-sm text-slate-600 mb-2 block">
-                        Selecciona un archivo
-                    </span>
-
-                    <div class="relative border-2 border-dashed border-slate-300
-                                rounded-xl p-6 text-center
-                                transition hover:border-blue-500 hover:bg-blue-50/40">
-
-                        <input
-                            id="csvInput"
-                            type="file"
-                            name="archivo"
-                            accept=".csv"
-                            required
-                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        >
-
-                        <div class="text-slate-500">
-                            <p class="font-medium">Arrastra el archivo aquí</p>
-                            <p class="text-xs mt-1">o haz clic para seleccionar</p>
-                        </div>
-                    </div>
-                </label>
-
-                <button
-                    type="submit"
-                    class="mt-6 w-full bg-gradient-to-r
-                           from-blue-600 to-indigo-600
-                           hover:from-blue-700 hover:to-indigo-700
-                           text-white font-semibold py-3 rounded-xl
-                           shadow-lg hover:shadow-xl
-                           transition-all duration-300"
+                <input
+                    id="csvInput"
+                    type="file"
+                    name="archivo"
+                    accept=".csv"
+                    required
+                    class="w-full border border-dashed rounded-xl p-6 cursor-pointer"
                 >
+
+                <button class="mt-6 w-full bg-blue-600 hover:bg-blue-700
+                               text-white py-3 rounded-xl font-semibold">
                     🚀 Importar ventas
                 </button>
             </form>
 
-            {{-- MENSAJES --}}
-            @if(session('success'))
-                <div class="mt-4 p-4 bg-green-100 text-green-800 rounded-xl">
-                    {{ session('success') }}
-                </div>
-            @endif
-
             @if($errors->any())
-                <div class="mt-4 p-4 bg-red-100 text-red-800 rounded-xl">
+                <div class="mt-4 bg-red-100 text-red-800 p-3 rounded">
                     {{ $errors->first() }}
                 </div>
             @endif
-
-            <div class="mt-6 text-xs rounded-xl p-4
-                        bg-yellow-50 text-yellow-800
-                        border border-yellow-200">
-                ⚠️ Este módulo es solo para datos históricos.
-            </div>
         </div>
 
-        {{-- CARD PREVIEW --}}
-        <div class="xl:col-span-2 bg-white/80 backdrop-blur
-                    rounded-2xl shadow-xl p-6">
+        {{-- PREVIEW --}}
+        <div class="xl:col-span-2 bg-white rounded-2xl shadow-xl p-6">
 
-            <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                👀 Vista previa
-            </h2>
+            <h2 class="text-lg font-semibold mb-4">👀 Vista previa</h2>
 
-            {{-- EMPTY --}}
-            <div id="stateEmpty"
-                class="h-64 flex flex-col items-center justify-center
-                       rounded-xl border border-dashed border-slate-300
-                       bg-slate-50 text-slate-400">
-                <p class="font-medium">Ningún archivo cargado</p>
-                <p class="text-sm mt-1">Selecciona un CSV para ver la vista previa</p>
+            <div id="stateEmpty" class="h-64 flex items-center justify-center text-slate-400">
+                Selecciona un CSV para ver la vista previa
             </div>
 
-            {{-- LOADING --}}
-            <div id="stateLoading"
-                class="hidden h-64 flex flex-col items-center justify-center
-                       rounded-xl border border-slate-200 bg-white">
-                <div class="animate-spin h-10 w-10 rounded-full
-                            border-4 border-blue-500 border-t-transparent"></div>
-                <p class="mt-4 text-sm text-slate-500">Leyendo archivo...</p>
-            </div>
-
-            {{-- PREVIEW --}}
-            <div id="previewWrapper"
-                class="hidden mt-4 max-h-[420px] overflow-y-auto
-                       rounded-xl border border-slate-200
-                       bg-white shadow-inner">
-                <div id="previewContainer"></div>
-            </div>
-
-            {{-- ERROR --}}
             <div id="stateError"
-                class="hidden mt-4 rounded-xl border border-red-200
-                       bg-red-50 text-red-700 p-4 text-sm">
-                ❌ Error al leer el archivo. Verifica el formato CSV.
+                 class="hidden bg-red-50 text-red-700 p-4 rounded"></div>
+
+            <div id="previewWrapper"
+                 class="hidden max-h-[420px] overflow-y-auto border rounded-xl">
+                <div id="previewContainer"></div>
             </div>
         </div>
 
@@ -137,106 +67,86 @@
 
 <script>
 const input = document.getElementById('csvInput');
-
 const stateEmpty = document.getElementById('stateEmpty');
-const stateLoading = document.getElementById('stateLoading');
 const stateError = document.getElementById('stateError');
 const previewWrapper = document.getElementById('previewWrapper');
 const previewContainer = document.getElementById('previewContainer');
 
-const REQUIRED_COLUMNS = ['dni', 'cliente', 'email', 'curso'];
+/* 🔥 MAPEO REAL GOOGLE FORMS → SISTEMA */
+const COLUMN_MAP = {
+    dni: ['dni', 'documento'],
+    cliente: ['nombres y apellidos', 'cliente'],
+    email: ['correo', 'email', 'dirección de correo electrónico'],
+    curso: ['curso', 'curso adquirido', 'programa'],
+    asesor: ['asesor']
+};
 
-input.addEventListener('change', function (e) {
+function findColumnIndex(headers, aliases) {
+    return headers.findIndex(h =>
+        aliases.some(a => h.includes(a))
+    );
+}
+
+input.addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // RESET UI
     stateEmpty.classList.add('hidden');
     stateError.classList.add('hidden');
     previewWrapper.classList.add('hidden');
-    stateLoading.classList.remove('hidden');
 
     const reader = new FileReader();
 
-    reader.onload = function (event) {
+    reader.onload = ev => {
         try {
-            const text = event.target.result;
+            const text = ev.target.result;
+            const rows = text.split(/\r?\n/).filter(r => r.trim() !== '');
 
-            const rows = text
-                .split(/\r?\n/)
-                .map(r => r.trim())
-                .filter(r => r !== '');
-
-            if (rows.length < 2) throw new Error('CSV vacío');
-
-            // 🔥 Detectar delimitador automáticamente
             const delimiter = rows[0].includes(';') ? ';' : ',';
 
-            // 🧼 Normalizar headers
             const headers = rows[0]
                 .split(delimiter)
-                .map(h =>
-                    h.toLowerCase()
-                     .trim()
-                     .replace(/\s+/g, ' ')
-                );
+                .map(h => h.toLowerCase().trim());
 
-            // 🔎 Validar columnas obligatorias
-            const missing = REQUIRED_COLUMNS.filter(c => !headers.includes(c));
-            if (missing.length > 0) {
-                throw new Error('Faltan columnas: ' + missing.join(', '));
+            const indexes = {};
+
+            for (const key in COLUMN_MAP) {
+                const idx = findColumnIndex(headers, COLUMN_MAP[key]);
+                if (idx === -1 && ['dni','cliente','email','curso'].includes(key)) {
+                    throw new Error(`No se detectó la columna: ${key}`);
+                }
+                indexes[key] = idx;
             }
-
-            const bodyRows = rows.slice(1, 21); // preview máx 20 filas
 
             let table = `
                 <table class="min-w-full text-sm">
-                    <thead class="bg-slate-100 sticky top-0 z-10">
+                    <thead class="bg-slate-100 sticky top-0">
                         <tr>
-                            ${headers.map(h => `
-                                <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase">
-                                    ${h}
-                                </th>
-                            `).join('')}
+                            ${Object.keys(indexes).map(k =>
+                                `<th class="px-4 py-2">${k.toUpperCase()}</th>`
+                            ).join('')}
                         </tr>
                     </thead>
-                    <tbody class="bg-white">
+                    <tbody>
             `;
 
-            bodyRows.forEach(row => {
-                let cols = row.split(delimiter);
-
-                // 🛠 Ajustar columnas al número de headers
-                if (cols.length < headers.length) {
-                    cols = cols.concat(
-                        Array(headers.length - cols.length).fill('')
-                    );
+            rows.slice(1, 21).forEach(r => {
+                const cols = r.split(delimiter);
+                table += `<tr class="border-t">`;
+                for (const k in indexes) {
+                    const val = indexes[k] !== -1 ? cols[indexes[k]] : '';
+                    table += `<td class="px-4 py-2">${val ?? ''}</td>`;
                 }
-
-                cols = cols.slice(0, headers.length);
-
-                table += `
-                    <tr class="border-t hover:bg-slate-50 transition">
-                        ${cols.map(c => `
-                            <td class="px-4 py-2 text-slate-600 whitespace-nowrap">
-                                ${c.trim()}
-                            </td>
-                        `).join('')}
-                    </tr>
-                `;
+                table += `</tr>`;
             });
 
-            table += '</tbody></table>';
+            table += `</tbody></table>`;
 
             previewContainer.innerHTML = table;
-
-            stateLoading.classList.add('hidden');
             previewWrapper.classList.remove('hidden');
 
         } catch (err) {
-            console.error(err);
-            stateLoading.classList.add('hidden');
-            stateError.innerHTML = `❌ ${err.message}`;
+            stateError.textContent = err.message;
             stateError.classList.remove('hidden');
         }
     };
@@ -244,5 +154,4 @@ input.addEventListener('change', function (e) {
     reader.readAsText(file, 'UTF-8');
 });
 </script>
-
 @endsection
