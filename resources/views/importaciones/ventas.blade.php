@@ -1,3 +1,8 @@
+@extends('layouts.intranet')
+
+@section('title', 'Importar ventas')
+@section('page_title', 'Importar ventas históricas')
+
 @extends('layouts.app')
 
 @section('content')
