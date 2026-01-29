@@ -15,3 +15,6 @@ use App\Http\Controllers\ImportacionVentaController;
 
 Route::get('/importaciones/ventas', [ImportacionVentaController::class, 'index']);
 Route::post('/importaciones/ventas/preview', [ImportacionVentaController::class, 'preview']);
+Route::get('/dashboard', function () {
+    return view('dashboard');
+});
