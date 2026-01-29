@@ -1,9 +1,23 @@
 <!DOCTYPE html>
 <html lang="es">
+    <script>
+tailwind.config = {
+  theme: {
+    extend: {
+      borderRadius: {
+        xl: '1rem',
+        '2xl': '1.25rem'
+      }
+    }
+  }
+}
+</script>
+
+
 <head>
     <meta charset="UTF-8">
     <title>@yield('title', 'Intranet ERP')</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+   
 </head>
 
 <body class="bg-slate-100 antialiased">
