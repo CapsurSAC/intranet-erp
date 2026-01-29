@@ -11,85 +11,84 @@ class ImportacionVentaController extends Controller
     {
         return view('importaciones.ventas');
     }
-    public function store(Request $request)
-    {
-        $request->validate(['archivo' => 'required|file']);
+public function store(Request $request)
+{
+    $request->validate(['archivo' => 'required|file']);
 
-        try {
-            $path = $request->file('archivo')->getRealPath();
-            
-            // 1. CARGA SEGURA: Usamos file() con flags para omitir líneas vacías
-            // y detectar finales de línea de forma automática.
-            $rows = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            
-            if (count($rows) < 2) return back()->withErrors("El archivo está vacío.");
+    try {
+        $path = $request->file('archivo')->getRealPath();
+        
+        // 1. Limpieza de caracteres invisibles al leer el archivo
+        $content = file_get_contents($path);
+        $content = str_replace("\xEF\xBB\xBF", '', $content); // Quita el BOM de Excel
+        
+        $lines = explode("\n", str_replace("\r", "", $content));
+        $lines = array_filter(array_map('trim', $lines)); // Quita líneas vacías
 
-            // 2. LIMPIEZA DE HEADERS: Quitamos el BOM y caracteres no deseados
-            $headerLine = array_shift($rows);
-            $headerLine = str_replace("\xEF\xBB\xBF", '', $headerLine);
-            $headers = str_getcsv($headerLine);
-            
-            $headers = array_map(function($h) {
-                return trim(strtolower(preg_replace('/[^a-z0-9]/i', '', $h)));
-            }, $headers);
+        if (count($lines) < 2) return back()->withErrors("El archivo no tiene datos.");
 
-            // 3. MAPEO DINÁMICO (El que ya sabemos que funciona para Capsur)
-            $map = [
-                'dni'     => ['dni', 'documento'],
-                'cliente' => ['cliente', 'nombres'],
-                'email'   => ['email', 'correo', 'direcciondecorreoelectronico'],
-                'asesor'  => ['asesor'],
-                'curso'   => ['producto', 'nombredeldiplomado', 'curso'],
-                'celular' => ['celular', 'telefono'],
-            ];
+        // 2. Procesar encabezados de forma segura
+        $headersRaw = str_getcsv(array_shift($lines), ",");
+        $headers = array_map(function($h) {
+            return preg_replace('/[^a-z0-9]/', '', strtolower($h));
+        }, $headersRaw);
 
-            $indexes = [];
-            foreach ($map as $campo => $aliases) {
-                foreach ($headers as $idx => $header) {
-                    foreach ($aliases as $alias) {
-                        if (str_contains($header, $alias)) {
-                            $indexes[$campo] = $idx;
-                            break 2;
-                        }
+        // 3. Mapeo de columnas (Ajustado a tus nombres reales)
+        $map = [
+            'dni'     => ['dni'],
+            'cliente' => ['cliente'],
+            'email'   => ['email', 'correo'],
+            'asesor'  => ['asesor'],
+            'curso'   => ['producto', 'diplomado', 'curso'],
+            'celular' => ['celular', 'telefono'],
+        ];
+
+        $idx = [];
+        foreach ($map as $campo => $aliases) {
+            foreach ($headers as $i => $h) {
+                foreach ($aliases as $alias) {
+                    if (str_contains($h, $alias)) {
+                        $idx[$campo] = $i;
+                        break 2;
                     }
                 }
             }
-
-            $inserted = 0;
-
-            // 4. PROCESAMIENTO SIN WARNINGS
-            foreach ($rows as $line) {
-                // str_getcsv maneja automáticamente las comillas de Google Forms
-                $row = str_getcsv($line);
-                
-                // Verificamos que al menos tengamos el índice del cliente
-                if (!isset($indexes['cliente'])) continue;
-
-                $nombre = trim($row[$indexes['cliente']] ?? '');
-                
-                // Si no hay nombre, saltamos sin lanzar error
-                if (empty($nombre)) continue;
-
-                // Creamos el registro protegiendo cada campo con ?? null
-                Venta::create([
-                    'dni'         => isset($indexes['dni']) ? trim($row[$indexes['dni']] ?? '') : null,
-                    'cliente'     => $nombre,
-                    'email'       => isset($indexes['email']) ? trim($row[$indexes['email']] ?? '') : null,
-                    'asesor'      => isset($indexes['asesor']) ? trim($row[$indexes['asesor']] ?? '') : 'Sin Asesor',
-                    'curso'       => isset($indexes['curso']) ? trim($row[$indexes['curso']] ?? '') : 'Varios',
-                    'celular'     => isset($indexes['celular']) ? trim($row[$indexes['celular']] ?? '') : null,
-                    'fecha_venta' => now(),
-                ]);
-
-                $inserted++;
-            }
-
-            return back()->with('success', "✅ Éxito: $inserted ventas importadas sin errores.");
-
-        } catch (\Exception $e) {
-            \Log::error("Error en importación Tacna: " . $e->getMessage());
-            return back()->withErrors("Error técnico: " . $e->getMessage());
         }
+
+        // Si no detectó la columna cliente por nombre, usamos la posición 3 (Ventas Tacna)
+        if (!isset($idx['cliente'])) $idx['cliente'] = 3;
+
+        $inserted = 0;
+
+        // 4. Bucle Blindado: Aquí es donde matamos los Warnings
+        foreach ($lines as $line) {
+            $row = str_getcsv($line, ",");
+            
+            // VERIFICACIÓN CLAVE: Si la fila no tiene la columna esperada, saltar sin avisar
+            if (!isset($row[$idx['cliente']])) continue;
+
+            $nombre = trim($row[$idx['cliente']]);
+            if (empty($nombre)) continue;
+
+            // Usamos el operador ?? para asegurar que si falta un dato, mande NULL y no un Warning
+            Venta::create([
+                'dni'         => isset($idx['dni']) ? substr(trim($row[$idx['dni']] ?? ''), 0, 15) : null,
+                'cliente'     => mb_convert_encoding($nombre, 'UTF-8', 'UTF-8'),
+                'email'       => isset($idx['email']) ? trim($row[$idx['email']] ?? '') : null,
+                'asesor'      => isset($idx['asesor']) ? trim($row[$idx['asesor']] ?? '') : 'Sin Asesor',
+                'curso'       => isset($idx['curso']) ? trim($row[$idx['curso']] ?? '') : 'Varios',
+                'celular'     => isset($idx['celular']) ? trim($row[$idx['celular']] ?? '') : null,
+                'fecha_venta' => now(),
+            ]);
+
+            $inserted++;
+        }
+
+        return back()->with('success', "✅ Se importaron $inserted ventas correctamente.");
+
+    } catch (\Exception $e) {
+        \Log::error("Error Fatal: " . $e->getMessage());
+        return back()->withErrors("Error en el archivo: No se pudo procesar la línea.");
     }
-   
+}
 }
