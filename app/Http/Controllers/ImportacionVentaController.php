@@ -13,80 +13,83 @@ class ImportacionVentaController extends Controller
     }
     public function store(Request $request)
     {
-        $request->validate([
-            'archivo' => 'required|file|mimes:csv,txt'
-        ]);
+        $request->validate(['archivo' => 'required|file']);
 
-        // 1. Leer el archivo y manejar el encoding para evitar caracteres invisibles
-        $path = $request->file('archivo')->getRealPath();
-        $content = file_get_contents($path);
-        
-        // Eliminar el BOM de UTF-8 si existe
-        $content = str_replace("\xEF\xBB\xBF", '', $content);
-        
-        $rows = preg_split('/\r\n|\r|\n/', $content);
-        $rows = array_filter($rows);
+        try {
+            $path = $request->file('archivo')->getRealPath();
+            
+            // 1. CARGA SEGURA: Usamos file() con flags para omitir líneas vacías
+            // y detectar finales de línea de forma automática.
+            $rows = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            
+            if (count($rows) < 2) return back()->withErrors("El archivo está vacío.");
 
-        // 2. Procesar encabezados con limpieza extrema
-        $headers = str_getcsv(array_shift($rows), ",");
-        $headers = array_map(function($h) {
-            return trim(strtolower(preg_replace('/[^a-z0-9]/i', '', $h)));
-        }, $headers);
+            // 2. LIMPIEZA DE HEADERS: Quitamos el BOM y caracteres no deseados
+            $headerLine = array_shift($rows);
+            $headerLine = str_replace("\xEF\xBB\xBF", '', $headerLine);
+            $headers = str_getcsv($headerLine);
+            
+            $headers = array_map(function($h) {
+                return trim(strtolower(preg_replace('/[^a-z0-9]/i', '', $h)));
+            }, $headers);
 
-        // 3. Mapeo ultra-simplificado para los headers limpios
-        $targetHeaders = [
-            'dni'     => ['dni', 'documento'],
-            'cliente' => ['cliente', 'nombres'],
-            'email'   => ['email', 'correo', 'direcciondecorreoelectronico'],
-            'asesor'  => ['asesor'],
-            'curso'   => ['producto', 'nombredeldiplomado', 'curso'],
-            'celular' => ['celular', 'telefono'],
-        ];
+            // 3. MAPEO DINÁMICO (El que ya sabemos que funciona para Capsur)
+            $map = [
+                'dni'     => ['dni', 'documento'],
+                'cliente' => ['cliente', 'nombres'],
+                'email'   => ['email', 'correo', 'direcciondecorreoelectronico'],
+                'asesor'  => ['asesor'],
+                'curso'   => ['producto', 'nombredeldiplomado', 'curso'],
+                'celular' => ['celular', 'telefono'],
+            ];
 
-        $indexes = [];
-        foreach ($targetHeaders as $campo => $aliases) {
-            foreach ($headers as $idx => $header) {
-                foreach ($aliases as $alias) {
-                    if (str_contains($header, $alias)) {
-                        $indexes[$campo] = $idx;
-                        break 2;
+            $indexes = [];
+            foreach ($map as $campo => $aliases) {
+                foreach ($headers as $idx => $header) {
+                    foreach ($aliases as $alias) {
+                        if (str_contains($header, $alias)) {
+                            $indexes[$campo] = $idx;
+                            break 2;
+                        }
                     }
                 }
             }
-        }
 
-        $inserted = 0;
+            $inserted = 0;
 
-        // 4. Procesar filas
-        foreach ($rows as $line) {
-            $row = str_getcsv($line, ",");
-            if (count($row) < 2) continue;
+            // 4. PROCESAMIENTO SIN WARNINGS
+            foreach ($rows as $line) {
+                // str_getcsv maneja automáticamente las comillas de Google Forms
+                $row = str_getcsv($line);
+                
+                // Verificamos que al menos tengamos el índice del cliente
+                if (!isset($indexes['cliente'])) continue;
 
-            // Extraer nombre con validación de seguridad
-            $nombre = isset($indexes['cliente']) ? trim($row[$indexes['cliente']] ?? '') : '';
-            
-            // Si el mapeo falló, buscamos por posición (Plan B: la columna 4 suele ser Cliente)
-            if (empty($nombre)) {
-                $nombre = trim($row[3] ?? ''); 
+                $nombre = trim($row[$indexes['cliente']] ?? '');
+                
+                // Si no hay nombre, saltamos sin lanzar error
+                if (empty($nombre)) continue;
+
+                // Creamos el registro protegiendo cada campo con ?? null
+                Venta::create([
+                    'dni'         => isset($indexes['dni']) ? trim($row[$indexes['dni']] ?? '') : null,
+                    'cliente'     => $nombre,
+                    'email'       => isset($indexes['email']) ? trim($row[$indexes['email']] ?? '') : null,
+                    'asesor'      => isset($indexes['asesor']) ? trim($row[$indexes['asesor']] ?? '') : 'Sin Asesor',
+                    'curso'       => isset($indexes['curso']) ? trim($row[$indexes['curso']] ?? '') : 'Varios',
+                    'celular'     => isset($indexes['celular']) ? trim($row[$indexes['celular']] ?? '') : null,
+                    'fecha_venta' => now(),
+                ]);
+
+                $inserted++;
             }
 
-            if (empty($nombre)) continue;
+            return back()->with('success', "✅ Éxito: $inserted ventas importadas sin errores.");
 
-            Venta::create([
-                'dni'         => isset($indexes['dni']) ? substr(trim($row[$indexes['dni']] ?? ''), 0, 15) : null,
-                'cliente'     => $nombre, 
-                'email'       => isset($indexes['email']) ? trim($row[$indexes['email']] ?? '') : null,
-                'asesor'      => isset($indexes['asesor']) ? trim($row[$indexes['asesor']] ?? '') : 'Sin Asesor',
-                'curso'       => isset($indexes['curso']) ? trim($row[$indexes['curso']] ?? '') : 'Varios',
-                'celular'     => isset($indexes['celular']) ? trim($row[$indexes['celular']] ?? '') : null,
-                'fecha_venta' => now(),
-            ]);
-
-            $inserted++;
+        } catch (\Exception $e) {
+            \Log::error("Error en importación Tacna: " . $e->getMessage());
+            return back()->withErrors("Error técnico: " . $e->getMessage());
         }
-
-        return back()->with('success', "✅ Se importaron $inserted ventas con éxito.");
     }
-
    
 }
