@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Model;
 
 class Venta extends Model
 {
-    protected $table = 'ventas';
+    use HasFactory;
+
     protected $fillable = [
         'dni',
-        'cliente',
+        'cliente', // <-- Este debe ser igual al que usas en el controlador
         'email',
         'asesor',
         'curso',
-        'asesor',
-        'fecha_venta',
+        'celular',
+        'fecha_venta'
     ];
 }
