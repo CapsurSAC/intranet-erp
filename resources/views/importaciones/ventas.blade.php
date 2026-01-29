@@ -1,9 +1,7 @@
-
+@extends('layouts.app')
 
 @section('title', 'Importar ventas')
 @section('page_title', 'Importar ventas históricas')
-
-@extends('layouts.app')
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 px-6 py-8">
@@ -31,40 +29,48 @@
                 📁 Archivo CSV
             </h2>
 
-            <label class="block">
-                <span class="text-sm text-slate-600 mb-2 block">
-                    Selecciona un archivo
-                </span>
-
-                <div class="relative border-2 border-dashed border-slate-300
-                            rounded-xl p-6 text-center
-                            transition hover:border-blue-500 hover:bg-blue-50/40">
-
-                    <input
-                        id="csvInput"
-                        type="file"
-                        accept=".csv"
-                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    >
-
-                    <div class="text-slate-500">
-                        <p class="font-medium">Arrastra el archivo aquí</p>
-                        <p class="text-xs mt-1">o haz clic para seleccionar</p>
-                    </div>
-                </div>
-            </label>
-
-          <form method="POST" action="/importaciones/ventas" enctype="multipart/form-data">
+            <form method="POST" action="/importaciones/ventas" enctype="multipart/form-data">
                 @csrf
 
-                <input type="file" name="archivo" accept=".csv" required>
+                <label class="block">
+                    <span class="text-sm text-slate-600 mb-2 block">
+                        Selecciona un archivo
+                    </span>
 
-                <button type="submit"
-                    class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-xl">
-                    Importar ventas
+                    <div class="relative border-2 border-dashed border-slate-300
+                                rounded-xl p-6 text-center
+                                transition hover:border-blue-500 hover:bg-blue-50/40">
+
+                        <input
+                            id="csvInput"
+                            type="file"
+                            name="archivo"
+                            accept=".csv"
+                            required
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        >
+
+                        <div class="text-slate-500">
+                            <p class="font-medium">Arrastra el archivo aquí</p>
+                            <p class="text-xs mt-1">o haz clic para seleccionar</p>
+                        </div>
+                    </div>
+                </label>
+
+                <button
+                    type="submit"
+                    class="mt-6 w-full bg-gradient-to-r
+                           from-blue-600 to-indigo-600
+                           hover:from-blue-700 hover:to-indigo-700
+                           text-white font-semibold py-3 rounded-xl
+                           shadow-lg hover:shadow-xl
+                           transition-all duration-300"
+                >
+                    🚀 Importar ventas
                 </button>
             </form>
 
+            {{-- MENSAJES --}}
             @if(session('success'))
                 <div class="mt-4 p-4 bg-green-100 text-green-800 rounded-xl">
                     {{ session('success') }}
@@ -86,47 +92,45 @@
 
         {{-- CARD PREVIEW --}}
         <div class="xl:col-span-2 bg-white/80 backdrop-blur
-            rounded-2xl shadow-xl p-6">
+                    rounded-2xl shadow-xl p-6">
 
             <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
                 👀 Vista previa
             </h2>
 
-            <!-- ESTADO VACÍO -->
+            {{-- EMPTY --}}
             <div id="stateEmpty"
                 class="h-64 flex flex-col items-center justify-center
-                    rounded-xl border border-dashed border-slate-300
-                    bg-slate-50 text-slate-400 transition">
+                       rounded-xl border border-dashed border-slate-300
+                       bg-slate-50 text-slate-400">
                 <p class="font-medium">Ningún archivo cargado</p>
                 <p class="text-sm mt-1">Selecciona un CSV para ver la vista previa</p>
             </div>
 
-            <!-- ESTADO CARGANDO -->
+            {{-- LOADING --}}
             <div id="stateLoading"
                 class="hidden h-64 flex flex-col items-center justify-center
-                    rounded-xl border border-slate-200 bg-white">
+                       rounded-xl border border-slate-200 bg-white">
                 <div class="animate-spin h-10 w-10 rounded-full
                             border-4 border-blue-500 border-t-transparent"></div>
                 <p class="mt-4 text-sm text-slate-500">Leyendo archivo...</p>
             </div>
 
-            <!-- CONTENEDOR PREVIEW -->
+            {{-- PREVIEW --}}
             <div id="previewWrapper"
                 class="hidden mt-4 max-h-[420px] overflow-y-auto
-                    rounded-xl border border-slate-200
-                    bg-white shadow-inner
-                    transition-all duration-500 ease-out">
+                       rounded-xl border border-slate-200
+                       bg-white shadow-inner">
                 <div id="previewContainer"></div>
             </div>
 
-            <!-- ESTADO ERROR -->
+            {{-- ERROR --}}
             <div id="stateError"
                 class="hidden mt-4 rounded-xl border border-red-200
-                    bg-red-50 text-red-700 p-4 text-sm">
+                       bg-red-50 text-red-700 p-4 text-sm">
                 ❌ Error al leer el archivo. Verifica el formato CSV.
             </div>
         </div>
-
 
     </div>
 </div>
@@ -145,7 +149,6 @@ input.addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // RESET
     stateEmpty.classList.add('hidden');
     stateError.classList.add('hidden');
     previewWrapper.classList.add('hidden');
@@ -156,48 +159,51 @@ input.addEventListener('change', function (e) {
     reader.onload = function (event) {
         try {
             const text = event.target.result;
-            const rows = text.split('\n').filter(r => r.trim() !== '');
+            const rows = text.split(/\r?\n/).filter(r => r.trim() !== '');
 
-            if (rows.length < 2) throw new Error('CSV vacío');
+            if (rows.length < 2) throw new Error();
 
-            const headers = rows[0].split(',');
-            const bodyRows = rows.slice(1, 21); // máx 20 filas
+            // 🔥 detectar delimitador
+            const delimiter = rows[0].includes(';') ? ';' : ',';
+
+            const headers = rows[0]
+                .split(delimiter)
+                .map(h => h.trim().toLowerCase());
+
+            const bodyRows = rows.slice(1, 21);
 
             let table = `
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-100 sticky top-0 z-10">
                         <tr>
                             ${headers.map(h => `
-                                <th class="px-4 py-3 text-left font-semibold text-slate-700">
+                                <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase">
                                     ${h}
                                 </th>`).join('')}
                         </tr>
                     </thead>
-                    <tbody class="bg-white">
+                    <tbody>
             `;
 
             bodyRows.forEach(row => {
-                const cols = row.split(',');
+                const cols = row.split(delimiter);
                 table += `
                     <tr class="border-t hover:bg-slate-50 transition">
                         ${cols.map(c => `
-                            <td class="px-4 py-2 text-slate-600">
-                                ${c}
+                            <td class="px-4 py-2 text-slate-600 whitespace-nowrap">
+                                ${c.trim()}
                             </td>`).join('')}
-                    </tr>
-                `;
+                    </tr>`;
             });
 
-            table += `</tbody></table>`;
+            table += '</tbody></table>';
 
             previewContainer.innerHTML = table;
 
-            // TRANSICIÓN SUAVE
             stateLoading.classList.add('hidden');
             previewWrapper.classList.remove('hidden');
-            previewWrapper.classList.add('animate-fade-in');
 
-        } catch (err) {
+        } catch (e) {
             stateLoading.classList.add('hidden');
             stateError.classList.remove('hidden');
         }
@@ -206,5 +212,4 @@ input.addEventListener('change', function (e) {
     reader.readAsText(file);
 });
 </script>
-
 @endsection

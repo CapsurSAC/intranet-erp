@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Venta;
-use Illuminate\Support\Facades\Validator;
 
 class ImportacionVentaController extends Controller
 {
@@ -19,32 +18,66 @@ class ImportacionVentaController extends Controller
             'archivo' => 'required|file|mimes:csv,txt'
         ]);
 
-        $file = fopen($request->file('archivo')->getRealPath(), 'r');
+        $path = $request->file('archivo')->getRealPath();
+        $file = fopen($path, 'r');
 
-        $header = fgetcsv($file);
-        $header = array_map('strtolower', $header);
+        if (!$file) {
+            return back()->withErrors('No se pudo abrir el archivo');
+        }
 
-        // columnas mínimas obligatorias
+        /* ===============================
+         * 1️⃣ Detectar delimitador
+         * =============================== */
+        $firstLine = fgets($file);
+        $delimiter = str_contains($firstLine, ';') ? ';' : ',';
+        rewind($file);
+
+        /* ===============================
+         * 2️⃣ Leer cabecera correctamente
+         * =============================== */
+        $header = fgetcsv($file, 0, $delimiter);
+
+        if (!$header) {
+            return back()->withErrors('El archivo CSV está vacío');
+        }
+
+        $header = array_map(fn ($h) => strtolower(trim($h)), $header);
+
+        /* ===============================
+         * 3️⃣ Validar columnas obligatorias
+         * =============================== */
         $required = ['dni', 'cliente', 'email', 'curso'];
 
         foreach ($required as $col) {
             if (!in_array($col, $header)) {
-                return back()->withErrors("Falta la columna obligatoria: $col");
+                return back()->withErrors("❌ Falta la columna obligatoria: $col");
             }
         }
 
         $map = array_flip($header);
         $inserted = 0;
 
-        while (($row = fgetcsv($file)) !== false) {
+        /* ===============================
+         * 4️⃣ Procesar filas
+         * =============================== */
+        while (($row = fgetcsv($file, 0, $delimiter)) !== false) {
+
+            // ignorar filas vacías
+            if (count(array_filter($row)) === 0) {
+                continue;
+            }
+
             Venta::create([
-                'dni'          => $row[$map['dni']] ?? null,
-                'cliente'      => $row[$map['cliente']] ?? null,
-                'email'        => $row[$map['email']] ?? null,
-                'curso'        => $row[$map['curso']] ?? null,
-                'asesor'       => $row[$map['asesor']] ?? null,
-                'fecha_venta'  => now(),
+                'dni'         => trim($row[$map['dni']] ?? ''),
+                'cliente'     => trim($row[$map['cliente']] ?? ''),
+                'email'       => trim($row[$map['email']] ?? ''),
+                'curso'       => trim($row[$map['curso']] ?? ''),
+                'asesor'      => isset($map['asesor'])
+                                    ? trim($row[$map['asesor']] ?? '')
+                                    : null,
+                'fecha_venta' => now(),
             ]);
+
             $inserted++;
         }
 
