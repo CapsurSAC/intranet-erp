@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -8,11 +7,13 @@
 
 <h1>Importar ventas históricas</h1>
 
-<form>
-    <label>Archivo CSV</label><br>
-    <input type="file" accept=".csv"><br><br>
+<form method="POST" action="/importaciones/ventas/preview" enctype="multipart/form-data">
+    @csrf
 
-    <button type="button">Cargar archivo</button>
+    <label>Archivo CSV</label><br>
+    <input type="file" name="csv" accept=".csv" required><br><br>
+
+    <button type="submit">Cargar archivo</button>
 </form>
 
 </body>

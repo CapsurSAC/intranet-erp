@@ -12,5 +12,6 @@ Route::get('/login', function () {
 use App\Http\Controllers\ImportacionVentaController;
 
 
-    Route::get('/importaciones/ventas', [ImportacionVentaController::class, 'index']);
 
+Route::get('/importaciones/ventas', [ImportacionVentaController::class, 'index']);
+Route::post('/importaciones/ventas/preview', [ImportacionVentaController::class, 'preview']);
