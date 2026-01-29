@@ -41,6 +41,7 @@
                                transition hover:border-blue-500 hover:bg-blue-50/40"
                     >
                         <input
+                            id="csvInput"
                             type="file"
                             name="archivo"
                             accept=".csv"
@@ -101,7 +102,9 @@
                     Ningún archivo cargado
                 </p>
                 <p class="text-sm mt-1">
-                    La vista previa aparecerá aquí
+                    <div id="previewContainer"
+                        class="hidden mt-6 overflow-x-auto">
+                    </div>
                 </p>
             </div>
 
@@ -132,4 +135,51 @@
 
     </div>
 </div>
+<script>
+document.getElementById('csvInput').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function (event) {
+        const text = event.target.result;
+        const rows = text.split('\n').filter(r => r.trim() !== '');
+
+        if (rows.length === 0) return;
+
+        const headers = rows[0].split(',');
+        const bodyRows = rows.slice(1, 11); // max 10 filas
+
+        let table = `
+            <table class="min-w-full text-sm rounded-xl overflow-hidden shadow">
+                <thead class="bg-slate-100 text-slate-700">
+                    <tr>
+                        ${headers.map(h => `<th class="px-4 py-2 text-left">${h}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody class="bg-white">
+        `;
+
+        bodyRows.forEach(row => {
+            const cols = row.split(',');
+            table += `
+                <tr class="border-t hover:bg-slate-50 transition">
+                    ${cols.map(c => `<td class="px-4 py-2">${c}</td>`).join('')}
+                </tr>
+            `;
+        });
+
+        table += `</tbody></table>`;
+
+        const preview = document.getElementById('previewContainer');
+        preview.innerHTML = table;
+        preview.classList.remove('hidden');
+    };
+
+    reader.readAsText(file);
+});
+</script>
+
+
 @endsection
