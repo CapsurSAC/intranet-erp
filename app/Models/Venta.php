@@ -9,14 +9,15 @@ class Venta extends Model
 {
     use HasFactory;
 
-    // 1. Nombre de la tabla (asegúrate que sea plural)
+    // 1. Nombre de la tabla en tu DB
     protected $table = 'ventas';
 
-    // 2. LA LISTA BLANCA (Fillable)
-    // Si una columna NO está aquí, Laravel mandará un Warning o error de integridad
+    // 2. EL FILTRO DE SEGURIDAD (Fillable)
+    // Agrega aquí 'cliente' y todos los campos que quieres importar.
+    // Si no están aquí, Laravel los ignora y lanza el Warning/Error.
     protected $fillable = [
         'dni',
-        'cliente',     // <--- Este es el campo que te está dando guerra
+        'cliente',     // <--- Asegúrate que se llame igual que en tu migración
         'email',
         'asesor',
         'curso',
@@ -24,8 +25,6 @@ class Venta extends Model
         'fecha_venta',
     ];
 
-    // 3. CASTEO DE DATOS (Opcional, para manejar la fecha correctamente)
-    protected $casts = [
-        'fecha_venta' => 'datetime',
-    ];
+    // 3. Desactivar protección si prefieres (Solo si confías plenamente en el CSV)
+    // protected $guarded = []; 
 }
