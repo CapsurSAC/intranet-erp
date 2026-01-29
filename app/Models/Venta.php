@@ -9,22 +9,16 @@ class Venta extends Model
 {
     use HasFactory;
 
-    // 1. Nombre de la tabla en tu DB
     protected $table = 'ventas';
 
-    // 2. EL FILTRO DE SEGURIDAD (Fillable)
-    // Agrega aquí 'cliente' y todos los campos que quieres importar.
-    // Si no están aquí, Laravel los ignora y lanza el Warning/Error.
-    protected $fillable = [
-        'dni',
-        'cliente',     // <--- Asegúrate que se llame igual que en tu migración
-        'email',
-        'asesor',
-        'curso',
-        'celular',
-        'fecha_venta',
-    ];
+    // ELIMINAMOS LA PROTECCIÓN DE COLUMNAS
+    // Al dejar guarded vacío, permitimos que entre cualquier dato del CSV
+    protected $guarded = [];
 
-    // 3. Desactivar protección si prefieres (Solo si confías plenamente en el CSV)
-    // protected $guarded = []; 
+    // Si quieres usar fillable en lugar de guarded, usa este:
+    /*
+    protected $fillable = [
+        'dni', 'cliente', 'email', 'asesor', 'curso', 'celular', 'fecha_venta'
+    ];
+    */
 }
