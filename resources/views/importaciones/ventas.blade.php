@@ -135,7 +135,6 @@
     </div>
 </div>
 
-{{-- JS --}}
 <script>
 const input = document.getElementById('csvInput');
 
@@ -145,10 +144,13 @@ const stateError = document.getElementById('stateError');
 const previewWrapper = document.getElementById('previewWrapper');
 const previewContainer = document.getElementById('previewContainer');
 
+const REQUIRED_COLUMNS = ['dni', 'cliente', 'email', 'curso'];
+
 input.addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
 
+    // RESET UI
     stateEmpty.classList.add('hidden');
     stateError.classList.add('hidden');
     previewWrapper.classList.add('hidden');
@@ -159,18 +161,33 @@ input.addEventListener('change', function (e) {
     reader.onload = function (event) {
         try {
             const text = event.target.result;
-            const rows = text.split(/\r?\n/).filter(r => r.trim() !== '');
 
-            if (rows.length < 2) throw new Error();
+            const rows = text
+                .split(/\r?\n/)
+                .map(r => r.trim())
+                .filter(r => r !== '');
 
-            // 🔥 detectar delimitador
+            if (rows.length < 2) throw new Error('CSV vacío');
+
+            // 🔥 Detectar delimitador automáticamente
             const delimiter = rows[0].includes(';') ? ';' : ',';
 
+            // 🧼 Normalizar headers
             const headers = rows[0]
                 .split(delimiter)
-                .map(h => h.trim().toLowerCase());
+                .map(h =>
+                    h.toLowerCase()
+                     .trim()
+                     .replace(/\s+/g, ' ')
+                );
 
-            const bodyRows = rows.slice(1, 21);
+            // 🔎 Validar columnas obligatorias
+            const missing = REQUIRED_COLUMNS.filter(c => !headers.includes(c));
+            if (missing.length > 0) {
+                throw new Error('Faltan columnas: ' + missing.join(', '));
+            }
+
+            const bodyRows = rows.slice(1, 21); // preview máx 20 filas
 
             let table = `
                 <table class="min-w-full text-sm">
@@ -179,21 +196,34 @@ input.addEventListener('change', function (e) {
                             ${headers.map(h => `
                                 <th class="px-4 py-3 text-left font-semibold text-slate-700 uppercase">
                                     ${h}
-                                </th>`).join('')}
+                                </th>
+                            `).join('')}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="bg-white">
             `;
 
             bodyRows.forEach(row => {
-                const cols = row.split(delimiter);
+                let cols = row.split(delimiter);
+
+                // 🛠 Ajustar columnas al número de headers
+                if (cols.length < headers.length) {
+                    cols = cols.concat(
+                        Array(headers.length - cols.length).fill('')
+                    );
+                }
+
+                cols = cols.slice(0, headers.length);
+
                 table += `
                     <tr class="border-t hover:bg-slate-50 transition">
                         ${cols.map(c => `
                             <td class="px-4 py-2 text-slate-600 whitespace-nowrap">
                                 ${c.trim()}
-                            </td>`).join('')}
-                    </tr>`;
+                            </td>
+                        `).join('')}
+                    </tr>
+                `;
             });
 
             table += '</tbody></table>';
@@ -203,13 +233,16 @@ input.addEventListener('change', function (e) {
             stateLoading.classList.add('hidden');
             previewWrapper.classList.remove('hidden');
 
-        } catch (e) {
+        } catch (err) {
+            console.error(err);
             stateLoading.classList.add('hidden');
+            stateError.innerHTML = `❌ ${err.message}`;
             stateError.classList.remove('hidden');
         }
     };
 
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
 });
 </script>
+
 @endsection
