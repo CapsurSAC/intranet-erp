@@ -11,48 +11,24 @@ class ImportacionVentaController extends Controller
     {
         return view('importaciones.ventas');
     }
-    public function store(Request $request)
-    {
-        $request->validate(['archivo' => 'required|file']);
+    public function store(Request $request) {
+    $path = $request->file('archivo')->getRealPath();
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    
+    // Limpiar el encabezado de cualquier basura (BOM, comas raras)
+    $headers = str_getcsv(array_shift($lines));
+    $headers = array_map(fn($h) => preg_replace('/[^a-z0-9]/i', '_', trim($h)), $headers);
 
-        try {
-            $path = $request->file('archivo')->getRealPath();
-            $content = file_get_contents($path);
-            
-            // Limpiar basura invisible del archivo
-            $content = str_replace("\xEF\xBB\xBF", '', $content);
-            $rows = explode("\n", str_replace("\r", "", $content));
-            $rows = array_filter(array_map('trim', $rows));
+    foreach ($lines as $line) {
+        $values = str_getcsv($line);
+        if (count($values) < 1) continue;
 
-            // La primera fila son los nombres de las columnas del CSV
-            $headers = str_getcsv(array_shift($rows)); 
-            $inserted = 0;
-
-            foreach ($rows as $line) {
-                $values = str_getcsv($line);
-                
-                // Si la fila está mocha, la saltamos
-                if (count($values) < count($headers) * 0.5) continue;
-
-                // Creamos un array: ["Marca temporal" => "3/1/2026...", "DNI:" => "123..."]
-                $datosFila = [];
-                foreach ($headers as $i => $label) {
-                    $datosFila[$label] = $values[$i] ?? null;
-                }
-
-                // Insertamos directo a la base de datos
-                \App\Models\Venta::create([
-                    'data' => $datosFila
-                ]);
-
-                $inserted++;
-            }
-
-            return back()->with('success', "✅ Se subieron $inserted filas con todas sus columnas originales.");
-
-        } catch (\Exception $e) {
-            return back()->withErrors("Error: " . $e->getMessage());
-        }
+        // Creamos el registro sin mapeos complicados
+        \App\Models\Venta::create([
+            'data' => array_combine($headers, array_pad($values, count($headers), ''))
+        ]);
     }
+    return back()->with('success', '¡POR FIN SUBIÓ!');
+}
 
 }

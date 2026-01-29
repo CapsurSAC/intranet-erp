@@ -8,10 +8,9 @@ class Venta extends Model
 {
     protected $table = 'ventas';
     
-    // Permitimos que se guarde el campo 'data'
-    protected $fillable = ['data'];
+    // ESTA LÍNEA ES LA CLAVE: Permite que entre CUALQUIER COSA a la base de datos
+    protected $guarded = []; 
 
-    // Esto convierte el JSON de la DB en un array de PHP automáticamente
     protected $casts = [
         'data' => 'array'
     ];
