@@ -11,38 +11,43 @@ class ImportacionVentaController extends Controller
     {
         return view('importaciones.ventas');
     }
-
     public function store(Request $request)
     {
         $request->validate([
             'archivo' => 'required|file|mimes:csv,txt'
         ]);
 
+        // 1. Leer el archivo y manejar el encoding para evitar caracteres invisibles
         $path = $request->file('archivo')->getRealPath();
-        // Abrimos con codificación UTF-8 para evitar problemas con tildes de Tacna
-        $file = fopen($path, 'r');
+        $content = file_get_contents($path);
+        
+        // Eliminar el BOM de UTF-8 si existe
+        $content = str_replace("\xEF\xBB\xBF", '', $content);
+        
+        $rows = preg_split('/\r\n|\r|\n/', $content);
+        $rows = array_filter($rows);
 
-        // 1. Limpieza de Headers (BOM y caracteres invisibles)
-        $headers = fgetcsv($file);
+        // 2. Procesar encabezados con limpieza extrema
+        $headers = str_getcsv(array_shift($rows), ",");
         $headers = array_map(function($h) {
-            return trim(mb_strtolower(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h)));
+            return trim(strtolower(preg_replace('/[^a-z0-9]/i', '', $h)));
         }, $headers);
 
-        // 2. Mapeo Flexible (Igual que el JS de la vista)
-        $map = [
-            'dni'     => ['dni:', 'dni', 'documento'],
-            'cliente' => ['cliente:', 'cliente', 'nombres'],
-            'email'   => ['email:', 'correo', 'dirección de correo electrónico'],
+        // 3. Mapeo ultra-simplificado para los headers limpios
+        $targetHeaders = [
+            'dni'     => ['dni', 'documento'],
+            'cliente' => ['cliente', 'nombres'],
+            'email'   => ['email', 'correo', 'direcciondecorreoelectronico'],
             'asesor'  => ['asesor'],
-            'curso'   => ['producto', 'nombre del diplomado', 'curso', 'especialidad'],
-            'celular' => ['celular:', 'telefono'],
+            'curso'   => ['producto', 'nombredeldiplomado', 'curso'],
+            'celular' => ['celular', 'telefono'],
         ];
 
         $indexes = [];
-        foreach ($map as $campo => $aliases) {
+        foreach ($targetHeaders as $campo => $aliases) {
             foreach ($headers as $idx => $header) {
                 foreach ($aliases as $alias) {
-                    if (str_contains($header, strtolower($alias))) {
+                    if (str_contains($header, $alias)) {
                         $indexes[$campo] = $idx;
                         break 2;
                     }
@@ -52,28 +57,36 @@ class ImportacionVentaController extends Controller
 
         $inserted = 0;
 
-        // 3. Procesar filas
-        while (($row = fgetcsv($file)) !== false) {
-            // Buscamos el nombre del cliente (obligatorio para importar)
-            $nombreVal = isset($indexes['cliente']) ? trim($row[$indexes['cliente']]) : '';
-            
-            if (empty($nombreVal)) continue;
+        // 4. Procesar filas
+        foreach ($rows as $line) {
+            $row = str_getcsv($line, ",");
+            if (count($row) < 2) continue;
 
-            // Insertamos usando los nombres de tu migración
+            // Extraer nombre con validación de seguridad
+            $nombre = isset($indexes['cliente']) ? trim($row[$indexes['cliente']] ?? '') : '';
+            
+            // Si el mapeo falló, buscamos por posición (Plan B: la columna 4 suele ser Cliente)
+            if (empty($nombre)) {
+                $nombre = trim($row[3] ?? ''); 
+            }
+
+            if (empty($nombre)) continue;
+
             Venta::create([
-                'dni'         => isset($indexes['dni']) ? trim($row[$indexes['dni']]) : null,
-                'cliente'     => $nombreVal, 
-                'email'       => isset($indexes['email']) ? trim($row[$indexes['email']]) : null,
-                'asesor'      => isset($indexes['asesor']) ? trim($row[$indexes['asesor']]) : 'Sin Asesor',
-                'curso'       => isset($indexes['curso']) ? trim($row[$indexes['curso']]) : 'Varios',
-                'celular'     => isset($indexes['celular']) ? trim($row[$indexes['celular']]) : null,
+                'dni'         => isset($indexes['dni']) ? substr(trim($row[$indexes['dni']] ?? ''), 0, 15) : null,
+                'cliente'     => $nombre, 
+                'email'       => isset($indexes['email']) ? trim($row[$indexes['email']] ?? '') : null,
+                'asesor'      => isset($indexes['asesor']) ? trim($row[$indexes['asesor']] ?? '') : 'Sin Asesor',
+                'curso'       => isset($indexes['curso']) ? trim($row[$indexes['curso']] ?? '') : 'Varios',
+                'celular'     => isset($indexes['celular']) ? trim($row[$indexes['celular']] ?? '') : null,
                 'fecha_venta' => now(),
             ]);
 
             $inserted++;
         }
 
-        fclose($file);
-        return back()->with('success', "✅ Se importaron $inserted ventas de Tacna con éxito.");
+        return back()->with('success', "✅ Se importaron $inserted ventas con éxito.");
     }
+
+   
 }
