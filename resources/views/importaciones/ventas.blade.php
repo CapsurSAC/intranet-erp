@@ -1,8 +1,9 @@
-@extends('layouts.intranet')
+
 
 @section('title', 'Importar ventas')
 @section('page_title', 'Importar ventas históricas')
 
+@extends('layouts.app')
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 px-6 py-8">
