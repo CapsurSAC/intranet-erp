@@ -1,12 +1,19 @@
-@extends('layouts.app')
 
-@section('content')
-    <h1>Importar ventas históricas</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Importar ventas</title>
+</head>
+<body>
 
-    <form>
-        <label>Archivo CSV</label><br>
-        <input type="file" accept=".csv"><br><br>
+<h1>Importar ventas históricas</h1>
 
-        <button type="button">Cargar archivo</button>
-    </form>
-@endsection
+<form>
+    <label>Archivo CSV</label><br>
+    <input type="file" accept=".csv"><br><br>
+
+    <button type="button">Cargar archivo</button>
+</form>
+
+</body>
+</html>
