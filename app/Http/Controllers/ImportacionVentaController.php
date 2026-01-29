@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Venta;
+use Illuminate\Support\Carbon;
 
 class ImportacionVentaController extends Controller
 {
@@ -18,53 +19,69 @@ class ImportacionVentaController extends Controller
             'archivo' => 'required|file|mimes:csv,txt'
         ]);
 
-        $file = fopen($request->file('archivo')->getRealPath(), 'r');
+        $path = $request->file('archivo')->getRealPath();
+        $file = fopen($path, 'r');
 
-        // Leer encabezados
+        // 1. Leer y limpiar encabezados (quitando BOM y espacios raros)
         $headers = fgetcsv($file);
+        if (!$headers) {
+            return back()->withErrors("El archivo está vacío o tiene un formato inválido.");
+        }
+        
+        // Limpieza profunda de headers
+        $headers = array_map(function($h) {
+            return trim(mb_strtolower(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h)));
+        }, $headers);
 
-        // Normalizamos headers
-        $headers = array_map(fn($h) => trim($h), $headers);
-
-        // MAPEO REAL DEL CSV
+        // 2. Mapeo flexible (buscamos coincidencias parciales)
         $map = [
-            'dni'     => 'DNI:',
-            'cliente' => 'CLIENTE:',
-            'email'   => 'EMAIL:',
-            'asesor'  => 'ASESOR(A)',
-            'curso'   => 'PRODUCTO',
-            'celular' => 'CELULAR:',
-            'fecha'   => 'Marca temporal',
+            'dni'     => ['dni:', 'dni', 'documento'],
+            'cliente' => ['cliente:', 'cliente', 'nombres'],
+            'email'   => ['email:', 'correo', 'dirección de correo electrónico'],
+            'asesor'  => ['asesor'],
+            'curso'   => ['producto', 'nombre del diplomado', 'curso'],
+            'celular' => ['celular:'],
         ];
 
-        // Validación de columnas obligatorias
-        foreach ($map as $campo => $csvName) {
-            if (!in_array($csvName, $headers)) {
-                return back()->withErrors("Falta la columna obligatoria: {$csvName}");
+        $indexes = [];
+        foreach ($map as $campo => $aliases) {
+            foreach ($headers as $idx => $header) {
+                foreach ($aliases as $alias) {
+                    if (str_contains($header, strtolower($alias))) {
+                        $indexes[$campo] = $idx;
+                        break 2;
+                    }
+                }
             }
         }
 
-        // Índices reales
-        $indexes = [];
-        foreach ($map as $campo => $csvName) {
-            $indexes[$campo] = array_search($csvName, $headers);
+        // Validación de columnas críticas
+        $columnasCriticas = ['cliente', 'curso']; // Bajamos la guardia con el DNI por si viene vacío
+        foreach ($columnasCriticas as $critica) {
+            if (!isset($indexes[$critica])) {
+                return back()->withErrors("No se encontró la columna para: " . strtoupper($critica));
+            }
         }
 
         $inserted = 0;
 
+        // 3. Procesar filas
         while (($row = fgetcsv($file)) !== false) {
+            // Si la fila está vacía o el nombre del cliente no existe, saltar
+            $nombreCliente = isset($indexes['cliente']) ? trim($row[$indexes['cliente']]) : '';
+            if (empty($nombreCliente)) continue;
 
-            // Evitar filas vacías
-            if (empty($row[$indexes['dni']])) continue;
+            // Extraer DNI (si no existe, ponemos null o vacío en lugar de saltar la fila)
+            $dniValue = isset($indexes['dni']) ? trim($row[$indexes['dni']]) : '';
 
             Venta::create([
-                'dni'         => trim($row[$indexes['dni']]),
-                'cliente'     => trim($row[$indexes['cliente']]),
-                'email'       => trim($row[$indexes['email']]),
-                'asesor'      => trim($row[$indexes['asesor']]),
-                'curso'       => trim($row[$indexes['curso']]),
-                'celular'     => trim($row[$indexes['celular']] ?? ''),
-                'fecha_venta' => now(),
+                'dni'         => $dniValue,
+                'cliente'     => $nombreCliente,
+                'email'       => isset($indexes['email']) ? trim($row[$indexes['email']]) : null,
+                'asesor'      => isset($indexes['asesor']) ? trim($row[$indexes['asesor']]) : 'Sin Asesor',
+                'curso'       => isset($indexes['curso']) ? trim($row[$indexes['curso']]) : 'No especificado',
+                'celular'     => isset($indexes['celular']) ? trim($row[$indexes['celular']]) : null,
+                'fecha_venta' => now(), // O puedes intentar parsear 'Marca temporal' si lo necesitas
             ]);
 
             $inserted++;
