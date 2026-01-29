@@ -54,17 +54,28 @@
                 </div>
             </label>
 
-            <button
-                type="button"
-                class="mt-6 w-full bg-gradient-to-r
-                       from-blue-600 to-indigo-600
-                       hover:from-blue-700 hover:to-indigo-700
-                       text-white font-semibold py-3 rounded-xl
-                       shadow-lg hover:shadow-xl
-                       transition-all duration-300"
-            >
-                🚀 Importar ventas
-            </button>
+          <form method="POST" action="/importaciones/ventas" enctype="multipart/form-data">
+                @csrf
+
+                <input type="file" name="archivo" accept=".csv" required>
+
+                <button type="submit"
+                    class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-xl">
+                    Importar ventas
+                </button>
+            </form>
+
+            @if(session('success'))
+                <div class="mt-4 p-4 bg-green-100 text-green-800 rounded-xl">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="mt-4 p-4 bg-red-100 text-red-800 rounded-xl">
+                    {{ $errors->first() }}
+                </div>
+            @endif
 
             <div class="mt-6 text-xs rounded-xl p-4
                         bg-yellow-50 text-yellow-800
@@ -75,83 +86,125 @@
 
         {{-- CARD PREVIEW --}}
         <div class="xl:col-span-2 bg-white/80 backdrop-blur
-                    rounded-2xl shadow-xl p-6
-                    transition-all duration-300 hover:shadow-2xl">
+            rounded-2xl shadow-xl p-6">
 
             <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
                 👀 Vista previa
             </h2>
 
-            {{-- ESTADO VACÍO --}}
-            <div
-                id="emptyState"
+            <!-- ESTADO VACÍO -->
+            <div id="stateEmpty"
                 class="h-64 flex flex-col items-center justify-center
-                       rounded-xl border border-slate-200
-                       bg-slate-50 text-slate-400"
-            >
+                    rounded-xl border border-dashed border-slate-300
+                    bg-slate-50 text-slate-400 transition">
                 <p class="font-medium">Ningún archivo cargado</p>
                 <p class="text-sm mt-1">Selecciona un CSV para ver la vista previa</p>
             </div>
 
-            {{-- PREVIEW REAL --}}
-         <div
-                id="previewContainer"
-                class="hidden mt-6 rounded-xl
-                    border border-slate-200 bg-white shadow
-                    max-h-[420px] overflow-y-auto"
-            >
+            <!-- ESTADO CARGANDO -->
+            <div id="stateLoading"
+                class="hidden h-64 flex flex-col items-center justify-center
+                    rounded-xl border border-slate-200 bg-white">
+                <div class="animate-spin h-10 w-10 rounded-full
+                            border-4 border-blue-500 border-t-transparent"></div>
+                <p class="mt-4 text-sm text-slate-500">Leyendo archivo...</p>
             </div>
 
+            <!-- CONTENEDOR PREVIEW -->
+            <div id="previewWrapper"
+                class="hidden mt-4 max-h-[420px] overflow-y-auto
+                    rounded-xl border border-slate-200
+                    bg-white shadow-inner
+                    transition-all duration-500 ease-out">
+                <div id="previewContainer"></div>
+            </div>
+
+            <!-- ESTADO ERROR -->
+            <div id="stateError"
+                class="hidden mt-4 rounded-xl border border-red-200
+                    bg-red-50 text-red-700 p-4 text-sm">
+                ❌ Error al leer el archivo. Verifica el formato CSV.
+            </div>
         </div>
+
 
     </div>
 </div>
 
 {{-- JS --}}
 <script>
-document.getElementById('csvInput').addEventListener('change', function (e) {
+const input = document.getElementById('csvInput');
+
+const stateEmpty = document.getElementById('stateEmpty');
+const stateLoading = document.getElementById('stateLoading');
+const stateError = document.getElementById('stateError');
+const previewWrapper = document.getElementById('previewWrapper');
+const previewContainer = document.getElementById('previewContainer');
+
+input.addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
+
+    // RESET
+    stateEmpty.classList.add('hidden');
+    stateError.classList.add('hidden');
+    previewWrapper.classList.add('hidden');
+    stateLoading.classList.remove('hidden');
 
     const reader = new FileReader();
 
     reader.onload = function (event) {
-        const text = event.target.result;
-        const rows = text.split('\n').filter(r => r.trim() !== '');
+        try {
+            const text = event.target.result;
+            const rows = text.split('\n').filter(r => r.trim() !== '');
 
-        if (rows.length === 0) return;
+            if (rows.length < 2) throw new Error('CSV vacío');
 
-        const headers = rows[0].split(',');
-        const bodyRows = rows.slice(1, 11);
+            const headers = rows[0].split(',');
+            const bodyRows = rows.slice(1, 21); // máx 20 filas
 
-        let table = `
-            <table class="min-w-full text-sm rounded-xl overflow-hidden">
-                <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10">
-
-                    <tr>
-                        ${headers.map(h => `<th class="px-4 py-2 text-left">${h}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody class="bg-white">
-        `;
-
-        bodyRows.forEach(row => {
-            const cols = row.split(',');
-            table += `
-                <tr class="border-t hover:bg-slate-50 transition">
-                    ${cols.map(c => `<td class="px-4 py-2">${c}</td>`).join('')}
-                </tr>
+            let table = `
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-100 sticky top-0 z-10">
+                        <tr>
+                            ${headers.map(h => `
+                                <th class="px-4 py-3 text-left font-semibold text-slate-700">
+                                    ${h}
+                                </th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">
             `;
-        });
 
-        table += `</tbody></table>`;
+            bodyRows.forEach(row => {
+                const cols = row.split(',');
+                table += `
+                    <tr class="border-t hover:bg-slate-50 transition">
+                        ${cols.map(c => `
+                            <td class="px-4 py-2 text-slate-600">
+                                ${c}
+                            </td>`).join('')}
+                    </tr>
+                `;
+            });
 
-        document.getElementById('previewContainer').innerHTML = table;
-        document.getElementById('previewContainer').classList.remove('hidden');
-        document.getElementById('emptyState').classList.add('hidden');
+            table += `</tbody></table>`;
+
+            previewContainer.innerHTML = table;
+
+            // TRANSICIÓN SUAVE
+            stateLoading.classList.add('hidden');
+            previewWrapper.classList.remove('hidden');
+            previewWrapper.classList.add('animate-fade-in');
+
+        } catch (err) {
+            stateLoading.classList.add('hidden');
+            stateError.classList.remove('hidden');
+        }
     };
 
     reader.readAsText(file);
 });
 </script>
+
 @endsection

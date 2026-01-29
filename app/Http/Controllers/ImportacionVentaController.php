@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Venta;
+use Illuminate\Support\Facades\Validator;
 
 class ImportacionVentaController extends Controller
 {
@@ -11,26 +13,43 @@ class ImportacionVentaController extends Controller
         return view('importaciones.ventas');
     }
 
-    public function preview(Request $request)
+    public function store(Request $request)
     {
         $request->validate([
-            'csv' => 'required|file|mimes:csv,txt'
+            'archivo' => 'required|file|mimes:csv,txt'
         ]);
 
-        $path = $request->file('csv')->store('imports');
+        $file = fopen($request->file('archivo')->getRealPath(), 'r');
 
-        $file = storage_path('app/' . $path);
-        $handle = fopen($file, 'r');
+        $header = fgetcsv($file);
+        $header = array_map('strtolower', $header);
 
-        $headers = fgetcsv($handle);
-        $rows = [];
+        // columnas mínimas obligatorias
+        $required = ['dni', 'cliente', 'email', 'curso'];
 
-        for ($i = 0; $i < 10 && ($row = fgetcsv($handle)) !== false; $i++) {
-            $rows[] = $row;
+        foreach ($required as $col) {
+            if (!in_array($col, $header)) {
+                return back()->withErrors("Falta la columna obligatoria: $col");
+            }
         }
 
-        fclose($handle);
+        $map = array_flip($header);
+        $inserted = 0;
 
-        return view('importaciones.preview', compact('headers', 'rows', 'path'));
+        while (($row = fgetcsv($file)) !== false) {
+            Venta::create([
+                'dni'          => $row[$map['dni']] ?? null,
+                'cliente'      => $row[$map['cliente']] ?? null,
+                'email'        => $row[$map['email']] ?? null,
+                'curso'        => $row[$map['curso']] ?? null,
+                'asesor'       => $row[$map['asesor']] ?? null,
+                'fecha_venta'  => now(),
+            ]);
+            $inserted++;
+        }
+
+        fclose($file);
+
+        return back()->with('success', "✅ $inserted ventas importadas correctamente");
     }
 }
