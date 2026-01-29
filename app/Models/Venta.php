@@ -9,27 +9,23 @@ class Venta extends Model
 {
     use HasFactory;
 
-    // Nombre de la tabla (asegúrate de que sea este)
+    // 1. Nombre de la tabla (asegúrate que sea plural)
     protected $table = 'ventas';
 
-    /**
-     * ATRIBUTOS QUE SE PUEDEN CARGAR MASIVAMENTE
-     * Aquí es donde debes agregar 'cliente' y los demás.
-     * Si no están aquí, Laravel los ignora y lanza el Warning.
-     */
+    // 2. LA LISTA BLANCA (Fillable)
+    // Si una columna NO está aquí, Laravel mandará un Warning o error de integridad
     protected $fillable = [
         'dni',
-        'cliente',     // El nombre del cliente
-        'email',       // Su correo
-        'asesor',      // El asesor de ventas
-        'curso',       // El producto o curso
-        'celular',     // Número de contacto
-        'fecha_venta', // Fecha de la operación
+        'cliente',     // <--- Este es el campo que te está dando guerra
+        'email',
+        'asesor',
+        'curso',
+        'celular',
+        'fecha_venta',
     ];
 
-    /**
-     * Si prefieres no restringir nada (solo para desarrollo), 
-     * puedes usar guarded en lugar de fillable:
-     * protected $guarded = []; 
-     */
+    // 3. CASTEO DE DATOS (Opcional, para manejar la fecha correctamente)
+    protected $casts = [
+        'fecha_venta' => 'datetime',
+    ];
 }
