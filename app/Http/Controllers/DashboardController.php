@@ -8,18 +8,27 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
-    {
-        // 1. Total de ventas importadas
-        $totalVentas = Venta::count();
+  public function index(Request $request)
+{
+    $query = Venta::query();
 
-        // 2. Ventas de hoy (basado en la fecha de importación)
-        $ventasHoy = Venta::whereDate('created_at', today())->count();
-
-        // 3. Obtener los productos más vendidos (extrayendo del JSON)
-        // Nota: Esto es un ejemplo de cómo procesar la data JSON para estadísticas
-        $ventasRecientes = Venta::orderBy('created_at', 'desc')->take(5)->get();
-
-        return view('dashboard', compact('totalVentas', 'ventasHoy', 'ventasRecientes'));
+    // Filtro por rango de fechas (usando la fecha de importación)
+    if ($request->filled('desde') && $request->filled('hasta')) {
+        $query->whereBetween('created_at', [$request->desde, $request->hasta]);
     }
+
+    $totalVentas = $query->count();
+    $ventasHoy = Venta::whereDate('created_at', today())->count();
+    
+    // Obtener los 5 diplomados más vendidos (Lógica para JSON)
+    // Extraemos la columna 'data', la decodificamos y agrupamos en PHP
+    $ventasParaGrafico = Venta::all()->pluck('data');
+    $productosTop = $ventasParaGrafico->groupBy(function($item) {
+        return $item['CURSO:'] ?? $item['NOMBRE DEL DIPLOMADO:'] ?? 'Varios';
+    })->map->count()->sortDesc()->take(5);
+
+    $ventasRecientes = $query->orderBy('created_at', 'desc')->take(8)->get();
+
+    return view('dashboard', compact('totalVentas', 'ventasHoy', 'ventasRecientes', 'productosTop'));
+}
 }
