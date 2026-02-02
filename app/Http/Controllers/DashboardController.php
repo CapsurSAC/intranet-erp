@@ -40,33 +40,38 @@ class DashboardController extends Controller
     // Función para descargar el Excel
     public function exportar(Request $request)
     {
+        // 1. Aplicamos los mismos filtros que tienes en el Dashboard para que sea coherente
         $query = Venta::query();
-        if ($request->filled('desde')) {
-            $query->whereBetween('created_at', [$request->desde, $request->hasta]);
+        if ($request->filled('desde') && $request->filled('hasta')) {
+            $query->whereBetween('created_at', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59']);
         }
 
         $ventas = $query->get();
-        $csvFileName = 'reporte_capsur_' . date('Ymd_His') . '.csv';
         
+        // 2. Configuración del archivo
+        $fileName = 'Reporte_Ventas_Capsur_' . date('Y-m-d_H-i') . '.csv';
         $headers = [
             "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$csvFileName",
+            "Content-Disposition" => "attachment; filename=$fileName",
             "Pragma"              => "no-cache",
             "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
             "Expires"             => "0"
         ];
 
+        // 3. Generación del contenido del CSV
         $callback = function() use($ventas) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['FECHA', 'DNI', 'CLIENTE', 'CURSO', 'ASESOR']);
+            // Escribimos los encabezados
+            fputcsv($file, ['FECHA REGISTRO', 'DNI', 'CLIENTE', 'CURSO', 'ASESOR', 'EMAIL']);
 
             foreach ($ventas as $v) {
                 fputcsv($file, [
                     $v->created_at,
-                    $v->data['DNI:'] ?? '',
-                    $v->data['CLIENTE:'] ?? '',
-                    $v->data['CURSO:'] ?? $v->data['NOMBRE DEL DIPLOMADO:'] ?? '',
-                    $v->data['ASESOR:'] ?? ''
+                    $v->data['DNI:'] ?? '---',
+                    $v->data['CLIENTE:'] ?? 'N/A',
+                    $v->data['CURSO:'] ?? $v->data['NOMBRE DEL DIPLOMADO:'] ?? 'Venta General',
+                    $v->data['ASESOR:'] ?? 'S/A',
+                    $v->data['EMAIL:'] ?? '---'
                 ]);
             }
             fclose($file);
