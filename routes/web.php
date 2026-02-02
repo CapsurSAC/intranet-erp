@@ -16,3 +16,4 @@ Route::post('/importaciones/ventas', [ImportacionVentaController::class, 'store'
 use App\Http\Controllers\DashboardController; // <--- Asegúrate de que esta línea esté al inicio
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/exportar-ventas', [DashboardController::class, 'exportar'])->name('ventas.export');

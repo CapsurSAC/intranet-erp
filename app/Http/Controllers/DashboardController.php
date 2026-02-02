@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Venta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -11,62 +12,66 @@ class DashboardController extends Controller
     {
         $query = Venta::query();
 
-        // Filtro por Rango de Fechas
+        // Filtros
         if ($request->filled('desde') && $request->filled('hasta')) {
             $query->whereBetween('created_at', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59']);
         }
 
-        // Filtro de Búsqueda para la Tabla (DNI o Nombre en JSON)
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
-                $q->where('data->DNI:', 'like', "%{$search}%")
-                  ->orWhere('data->CLIENTE:', 'like', "%{$search}%")
-                  ->orWhere('data->ASESOR:', 'like', "%{$search}%");
-            });
+            $query->where('data->CLIENTE:', 'like', "%{$search}%")
+                  ->orWhere('data->DNI:', 'like', "%{$search}%");
         }
 
-        // Estadísticas para las Cards
+        // Data para KPIs
         $totalVentas = $query->count();
         $ventasHoy = Venta::whereDate('created_at', today())->count();
 
-        // Ranking de Diplomados (Extraído del JSON)
+        // Data para Gráficos y Ranking (Soluciona el error de la variable)
         $statsCursos = Venta::all()->pluck('data')->groupBy(function($item) {
             return $item['CURSO:'] ?? $item['NOMBRE DEL DIPLOMADO:'] ?? 'Varios';
         })->map->count()->sortDesc()->take(5);
 
-        // Data para la Tabla con Paginación
         $ventasRecientes = $query->orderBy('created_at', 'desc')->paginate(10);
 
         return view('dashboard', compact('totalVentas', 'ventasHoy', 'ventasRecientes', 'statsCursos'));
     }
+
+    // Función para descargar el Excel
     public function exportar(Request $request)
     {
         $query = Venta::query();
-
-        // Aplicamos los mismos filtros que tienes en el Dashboard
-        if ($request->filled('desde') && $request->filled('hasta')) {
-            $query->whereBetween('created_at', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59']);
+        if ($request->filled('desde')) {
+            $query->whereBetween('created_at', [$request->desde, $request->hasta]);
         }
 
         $ventas = $query->get();
-        $filename = "reporte_ventas_" . date('Ymd') . ".csv";
+        $csvFileName = 'reporte_capsur_' . date('Ymd_His') . '.csv';
         
-        $handle = fopen('php://output', 'w');
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$csvFileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
 
-        // Encabezados dinámicos (usamos las llaves del primer JSON que encontremos)
-        if ($ventas->count() > 0) {
-            $headers = array_keys($ventas->first()->data);
-            fputcsv($handle, array_merge(['FECHA_SISTEMA'], $headers));
+        $callback = function() use($ventas) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['FECHA', 'DNI', 'CLIENTE', 'CURSO', 'ASESOR']);
 
             foreach ($ventas as $v) {
-                fputcsv($handle, array_merge([$v->created_at], array_values($v->data)));
+                fputcsv($file, [
+                    $v->created_at,
+                    $v->data['DNI:'] ?? '',
+                    $v->data['CLIENTE:'] ?? '',
+                    $v->data['CURSO:'] ?? $v->data['NOMBRE DEL DIPLOMADO:'] ?? '',
+                    $v->data['ASESOR:'] ?? ''
+                ]);
             }
-        }
+            fclose($file);
+        };
 
-        fclose($handle);
-        exit;
+        return response()->stream($callback, 200, $headers);
     }
 }
