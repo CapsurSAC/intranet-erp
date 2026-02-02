@@ -100,7 +100,60 @@
 
     </div>
 </div>
+{{-- TABLA DE VENTAS HISTÓRICAS --}}
+<div class="mt-12 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+        <h3 class="text-xl font-bold text-slate-800">Registros en Sistema</h3>
+        <span class="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
+            {{ $ventas->total() }} Ventas Totales
+        </span>
+    </div>
 
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold tracking-widest">
+                <tr>
+                    <th class="px-6 py-4">Cliente / Email</th>
+                    <th class="px-6 py-4">DNI</th>
+                    <th class="px-6 py-4">Producto / Diplomado</th>
+                    <th class="px-6 py-4">Asesor</th>
+                    <th class="px-6 py-4">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach($ventas as $venta)
+                <tr class="hover:bg-slate-50/50 transition-all">
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-bold text-slate-700">{{ $venta->data['CLIENTE:'] ?? 'Sin Nombre' }}</div>
+                        <div class="text-xs text-slate-400">{{ $venta->data['EMAIL:'] ?? $venta->data['Dirección de correo electrónico'] ?? '' }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm font-mono text-slate-500">
+                        {{ $venta->data['DNI:'] ?? '---' }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-[11px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
+                            {{ Str::limit($venta->data['NOMBRE DEL DIPLOMADO:'] ?? $venta->data['CURSO:'] ?? 'Venta General', 35) }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-600">
+                        {{ $venta->data['ASESOR:'] ?? 'No asignado' }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <button class="text-blue-600 hover:text-blue-800 text-xs font-bold uppercase tracking-tighter">
+                            Ver Detalle
+                        </button>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    {{-- Paginación --}}
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+        {{ $ventas->appends(request()->query())->links() }}
+    </div>
+</div>
 <script>
 // Elementos UI
 const input = document.getElementById('csvInput');
