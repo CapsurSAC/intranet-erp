@@ -11,25 +11,33 @@ class DashboardController extends Controller
     {
         $query = Venta::query();
 
-        // 1. Filtro por fecha (opcional por ahora)
+        // Filtro por Rango de Fechas
         if ($request->filled('desde') && $request->filled('hasta')) {
-            $query->whereBetween('created_at', [$request->desde, $request->hasta]);
+            $query->whereBetween('created_at', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59']);
         }
 
-        // 2. Cálculos básicos
+        // Filtro de Búsqueda para la Tabla (DNI o Nombre en JSON)
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('data->DNI:', 'like', "%{$search}%")
+                  ->orWhere('data->CLIENTE:', 'like', "%{$search}%")
+                  ->orWhere('data->ASESOR:', 'like', "%{$search}%");
+            });
+        }
+
+        // Estadísticas para las Cards
         $totalVentas = $query->count();
         $ventasHoy = Venta::whereDate('created_at', today())->count();
 
-        // 3. ESTA ES LA VARIABLE QUE TE FALTA ($statsCursos)
-        // Extraemos la data, agrupamos por curso y contamos
+        // Ranking de Diplomados (Extraído del JSON)
         $statsCursos = Venta::all()->pluck('data')->groupBy(function($item) {
             return $item['CURSO:'] ?? $item['NOMBRE DEL DIPLOMADO:'] ?? 'Varios';
         })->map->count()->sortDesc()->take(5);
 
-        // 4. Ventas recientes para la tabla
-        $ventasRecientes = $query->orderBy('created_at', 'desc')->take(10)->get();
+        // Data para la Tabla con Paginación
+        $ventasRecientes = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        // 5. Enviamos TODO a la vista
         return view('dashboard', compact('totalVentas', 'ventasHoy', 'ventasRecientes', 'statsCursos'));
     }
 }
