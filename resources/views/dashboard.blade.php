@@ -1,11 +1,14 @@
 @extends('layouts.app')
 
+@section('title', 'Panel de Control')
+@section('page_title', 'Dashboard Principal')
+
 @section('content')
-<div class="space-y-6">
-    
-    {{-- FILTROS DE INTELIGENCIA --}}
-    <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-        <form action="{{ route('dashboard') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+<div class="space-y-8">
+
+    {{-- 1. FILTROS Y ACCIONES --}}
+    <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col xl:flex-row items-center justify-between gap-6">
+        <form action="{{ route('dashboard') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end w-full xl:w-3/4">
             <div>
                 <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Desde</label>
                 <input type="date" name="desde" value="{{ request('desde') }}" class="w-full border-slate-200 rounded-xl text-sm focus:ring-blue-500">
@@ -19,23 +22,29 @@
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="DNI o Cliente..." class="w-full border-slate-200 rounded-xl text-sm focus:ring-blue-500">
             </div>
             <div class="flex gap-2">
-                <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all">FILTRAR</button>
+                <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">FILTRAR</button>
                 <a href="{{ route('dashboard') }}" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-sm font-bold hover:bg-slate-200">Limpiar</a>
             </div>
         </form>
+
+        <div class="w-full xl:w-1/4 flex justify-end">
+            <a href="{{ route('ventas.export', request()->all()) }}" class="w-full xl:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center shadow-lg shadow-green-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Exportar Excel
+            </a>
+        </div>
     </div>
 
-    {{-- KPI CARDS --}}
+    {{-- 2. KPI CARDS --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-slate-900 p-6 rounded-[2rem] text-white shadow-xl">
-            <p class="text-slate-400 text-xs font-bold uppercase">Ventas Totales</p>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Ventas Totales</p>
             <h3 class="text-3xl font-black mt-2">{{ number_format($totalVentas) }}</h3>
         </div>
         <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
             <p class="text-slate-500 text-xs font-bold uppercase">Importadas Hoy</p>
             <h3 class="text-3xl font-bold text-blue-600 mt-2">{{ $ventasHoy }}</h3>
         </div>
-        {{-- Card dinámica para Tacna --}}
         <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
             <p class="text-slate-500 text-xs font-bold uppercase">Sede Activa</p>
             <h3 class="text-2xl font-bold text-slate-800 mt-2">Tacna, PE</h3>
@@ -46,12 +55,29 @@
         </div>
     </div>
 
+    {{-- 3. ZONA DE GRÁFICOS --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 h-[400px] flex flex-col">
+            <h3 class="font-bold text-slate-800 mb-6 text-sm uppercase tracking-widest">Participación por Diplomado</h3>
+            <div class="flex-1 relative">
+                <canvas id="chartPastel"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 h-[400px] flex flex-col">
+            <h3 class="font-bold text-slate-800 mb-6 text-sm uppercase tracking-widest">Rendimiento Temporal</h3>
+            <div class="flex-1 relative">
+                <canvas id="chartBarras"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {{-- 4. RANKING Y TABLA --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {{-- RANKING LATERAL --}}
+        {{-- Ranking Lateral --}}
         <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 h-fit">
-            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
-                Top Diplomados
+            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center italic">
+                Top 5 Cursos
             </h3>
             <div class="space-y-6">
                 @foreach($statsCursos as $nombre => $cantidad)
@@ -68,31 +94,27 @@
             </div>
         </div>
 
-        {{-- TABLA DE VENTAS COMPLETA --}}
+        {{-- Tabla de Ventas --}}
         <div class="lg:col-span-2 bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                <h3 class="text-lg font-bold text-slate-800 uppercase tracking-tighter">Listado de Ventas Filtradas</h3>
+            <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <h3 class="text-lg font-bold text-slate-800 uppercase tracking-tighter text-sm">Listado de Ventas Recientes</h3>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-white text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
                         <tr>
-                            <th class="px-8 py-5">Información Cliente</th>
-                            <th class="px-8 py-5">Diplomado / Curso</th>
-                            <th class="px-8 py-5 text-right">Importación</th>
+                            <th class="px-8 py-5">Cliente</th>
+                            <th class="px-8 py-5">Diplomado</th>
+                            <th class="px-8 py-5 text-right">Fecha</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
                         @forelse($ventasRecientes as $v)
                         <tr class="hover:bg-blue-50/20 transition-all group">
                             <td class="px-8 py-4">
-                                <div class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                                    {{ $v->data['CLIENTE:'] ?? 'N/A' }}
-                                </div>
-                                <div class="text-[10px] text-slate-400 font-mono italic">
-                                    DNI: {{ $v->data['DNI:'] ?? '---' }} | {{ $v->data['ASESOR:'] ?? 'S/A' }}
-                                </div>
+                                <div class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{{ $v->data['CLIENTE:'] ?? 'N/A' }}</div>
+                                <div class="text-[10px] text-slate-400 font-mono">DNI: {{ $v->data['DNI:'] ?? '---' }}</div>
                             </td>
                             <td class="px-8 py-4">
                                 <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 uppercase">
@@ -106,7 +128,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="3" class="px-8 py-12 text-center text-slate-400 italic">No hay registros con esos filtros.</td>
+                            <td colspan="3" class="px-8 py-12 text-center text-slate-400 italic">No hay registros disponibles.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -119,4 +141,50 @@
         </div>
     </div>
 </div>
+
+{{-- Scripts para los Gráficos --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Gráfico de Pastel (Doughnut)
+    const ctxPastel = document.getElementById('chartPastel').getContext('2d');
+    new Chart(ctxPastel, {
+        type: 'doughnut',
+        data: {
+            labels: {!! json_encode($statsCursos->keys()) !!},
+            datasets: [{
+                data: {!! json_encode($statsCursos->values()) !!},
+                backgroundColor: ['#0f172a', '#2563eb', '#8b5cf6', '#f59e0b', '#10b981'],
+                hoverOffset: 20,
+                borderWidth: 0
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10 } } } } 
+        }
+    });
+
+    // Gráfico de Barras
+    const ctxBarras = document.getElementById('chartBarras').getContext('2d');
+    new Chart(ctxBarras, {
+        type: 'bar',
+        data: {
+            labels: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'],
+            datasets: [{
+                label: 'Ventas por Día',
+                data: [12, 19, 15, 25, 22, 30, 10], 
+                backgroundColor: '#2563eb',
+                borderRadius: 10,
+                barThickness: 20
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+</script>
 @endsection

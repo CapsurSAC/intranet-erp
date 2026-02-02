@@ -40,4 +40,33 @@ class DashboardController extends Controller
 
         return view('dashboard', compact('totalVentas', 'ventasHoy', 'ventasRecientes', 'statsCursos'));
     }
+    public function exportar(Request $request)
+    {
+        $query = Venta::query();
+
+        // Aplicamos los mismos filtros que tienes en el Dashboard
+        if ($request->filled('desde') && $request->filled('hasta')) {
+            $query->whereBetween('created_at', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59']);
+        }
+
+        $ventas = $query->get();
+        $filename = "reporte_ventas_" . date('Ymd') . ".csv";
+        
+        $handle = fopen('php://output', 'w');
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        // Encabezados dinámicos (usamos las llaves del primer JSON que encontremos)
+        if ($ventas->count() > 0) {
+            $headers = array_keys($ventas->first()->data);
+            fputcsv($handle, array_merge(['FECHA_SISTEMA'], $headers));
+
+            foreach ($ventas as $v) {
+                fputcsv($handle, array_merge([$v->created_at], array_values($v->data)));
+            }
+        }
+
+        fclose($handle);
+        exit;
+    }
 }
