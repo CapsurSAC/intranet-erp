@@ -43,4 +43,7 @@ RUN apt-get update && apt-get install -y libpng-dev libonig-dev libxml2-dev zip 
 
 # Instalamos extensiones de PHP fundamentales para el ERP de CAPSUR
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+
+# 3. Al final el composer install
+RUN composer install --no-dev --optimize-autoloader
 EXPOSE 80
