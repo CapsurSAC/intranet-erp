@@ -38,5 +38,9 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 
 # Instalar dependencias PHP
 RUN composer install --no-dev --optimize-autoloader
+# Instalamos librerías del sistema
+RUN apt-get update && apt-get install -y libpng-dev libonig-dev libxml2-dev zip unzip git curl
 
+# Instalamos extensiones de PHP fundamentales para el ERP de CAPSUR
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 EXPOSE 80
