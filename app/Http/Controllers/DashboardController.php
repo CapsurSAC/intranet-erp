@@ -40,18 +40,17 @@ class DashboardController extends Controller
     // Función para descargar el Excel
     public function exportar(Request $request)
     {
-        $query = Venta::query();
-        
-        // Filtros aplicados según tu log (desde/hasta)
+        $query = \App\Models\Venta::query();
+
         if ($request->filled('desde') && $request->filled('hasta')) {
             $query->whereBetween('created_at', [$request->desde . ' 00:00:00', $request->hasta . ' 23:59:59']);
         }
 
         $ventas = $query->get();
-        
+
+        // Este método es el más compatible con SSL y navegadores estrictos
         return response()->streamDownload(function() use ($ventas) {
             $file = fopen('php://output', 'w');
-            // Encabezados del CSV
             fputcsv($file, ['FECHA', 'DNI', 'CLIENTE', 'CURSO', 'ASESOR']);
 
             foreach ($ventas as $v) {
@@ -64,9 +63,6 @@ class DashboardController extends Controller
                 ]);
             }
             fclose($file);
-        }, 'Reporte_Ventas_Tacna.csv', [
-            'Content-Type' => 'text/csv',
-            'Content-Description' => 'File Transfer',
-        ]);
+        }, 'reporte_ventas_tacna.csv');
     }
 }
