@@ -10,7 +10,7 @@
     <style> body { font-family: 'Inter', sans-serif; } </style>
 </head>
 
-<body class="bg-slate-50 flex min-h-screen text-slate-900" x-data="{ sidebarOpen: true }">
+<body class="bg-gray-50 flex min-h-screen text-slate-900 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-100 via-slate-50 to-white" x-data="{ sidebarOpen: true }">
 
     {{-- Sidebar --}}
     <aside :class="sidebarOpen ? 'w-72' : 'w-20'" class="bg-[#0f172a] text-slate-300 flex flex-col transition-all duration-300 shadow-2xl z-50">
