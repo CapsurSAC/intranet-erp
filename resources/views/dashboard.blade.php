@@ -204,9 +204,9 @@
                  <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
                  <h3 class="font-bold text-lg mb-4 relative z-10">Accesos Rápidos</h3>
                  <div class="grid grid-cols-2 gap-3 relative z-10">
-                    <a href="/importaciones/ventas" class="bg-white/10 hover:bg-white/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center backdrop-blur-sm transition-all border border-white/5">
+                    <a href="{{ route('ventas.create') }}" class="bg-white/10 hover:bg-white/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center backdrop-blur-sm transition-all border border-white/5">
                         <svg class="w-6 h-6 mb-2 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span class="text-[10px] font-bold uppercase">Gestión Ventas</span>
+                        <span class="text-[10px] font-bold uppercase">Nueva Venta</span>
                     </a>
                     <a href="{{ route('alumnos.create') }}" class="bg-white/10 hover:bg-white/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center backdrop-blur-sm transition-all border border-white/5">
                          <svg class="w-6 h-6 mb-2 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>

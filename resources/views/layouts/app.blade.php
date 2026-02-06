@@ -51,6 +51,7 @@
                 </button>
 
                 <div x-show="open && sidebarOpen" x-collapse class="pl-12 mt-2 space-y-2">
+                    <a href="{{ route('ventas.create') }}" class="block text-sm py-2 hover:text-white transition-colors {{ request()->routeIs('ventas.create') ? 'text-blue-400 font-bold' : 'text-slate-500' }}">Registrar Venta</a>
                     <a href="/ventas" class="block text-sm py-2 hover:text-white transition-colors {{ request()->is('ventas') ? 'text-blue-400 font-bold' : 'text-slate-500' }}">Listado de Ventas</a>
                     <a href="/importaciones/ventas" class="block text-sm py-2 hover:text-white transition-colors {{ request()->is('importaciones/ventas') ? 'text-blue-400 font-bold' : 'text-slate-500' }}">Importar Histórico</a>
                 </div>

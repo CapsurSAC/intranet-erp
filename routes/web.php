@@ -23,3 +23,8 @@ use App\Http\Controllers\AlumnoController;
 Route::get('/alumnos', [AlumnoController::class, 'index'])->name('alumnos.index');
 Route::get('/alumnos/create', [AlumnoController::class, 'create'])->name('alumnos.create');
 Route::post('/alumnos', [AlumnoController::class, 'store'])->name('alumnos.store');
+
+// Rutas de Ventas (Manual)
+use App\Http\Controllers\VentaController;
+Route::get('/ventas/create', [VentaController::class, 'create'])->name('ventas.create');
+Route::post('/ventas', [VentaController::class, 'store'])->name('ventas.store');
